@@ -20,14 +20,28 @@ export class ShippingApiClient {
   async getShipmentByOrderId(orderId: string): Promise<Shipment | null> {
     if (this.useMocks) {
       await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Lógica determinista para simular diferentes estados basándose en el ID
+      // Ahora más generosa con 'DELIVERED' para facilitar pruebas de reseñas
+      const lastChar = orderId.charAt(orderId.length - 1).toUpperCase();
+      let status: 'PREPARING' | 'SHIPPED' | 'DELIVERED' = 'DELIVERED';
+      
+      // 0-3: PREPARING, 4-7: SHIPPED, 8-9 and Letters: DELIVERED
+      if (['0', '1', '2', '3'].includes(lastChar)) status = 'PREPARING';
+      else if (['4', '5', '6', '7'].includes(lastChar)) status = 'SHIPPED';
+
       return {
-        id: "ship_1",
+        id: `ship_${orderId}`,
         orderId,
-        buyerId: "user_1",
-        sellerId: "seller_1",
-        status: 'DELIVERED',
-        trackingCode: "TRK123456789",
-        addressSnapshot: {},
+        buyerId: "demo_user",
+        sellerId: "user_1",
+        status,
+        trackingCode: `TRK-${orderId.substring(4, 10)}`,
+        addressSnapshot: {
+          street: "Av. Alem 1253",
+          city: "Bahía Blanca",
+          postalCode: "8000"
+        },
       };
     }
 

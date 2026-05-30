@@ -25,7 +25,15 @@ export class PaymentsApiClient {
       // Simular latencia
       await new Promise(resolve => setTimeout(resolve, 800));
       
-      // Mock response
+      // Simulación de rechazo si el monto es exactamente 666
+      if (request.amount === 666) {
+        return {
+          id: `ch_${Math.random().toString(36).substring(7)}`,
+          status: 'REJECTED',
+        };
+      }
+
+      // Mock response exitosa
       return {
         id: `ch_${Math.random().toString(36).substring(7)}`,
         status: 'APPROVED',

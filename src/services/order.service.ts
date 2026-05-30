@@ -1,39 +1,29 @@
 import prisma from "@/lib/prisma";
 
-const shouldUseMocks = process.env.USE_MOCKS === "true" || !process.env.DATABASE_URL;
-
-export type MockOrder = {
-  id: string;
-  externalOrderId: string;
-  userId: string;
-  status: string;
-  totalAmount: number;
-  createdAt: Date;
-};
-
-const mockOrders = new Map<string, MockOrder>();
+const isDbAvailable = !!process.env.DATABASE_URL;
 
 export class OrderService {
-  async createOrder(userId: string, totalAmount: number) {
+  async createOrder(userId: string, totalAmount: number, cartId?: string) {
     const externalOrderId = `ORD-${Math.random().toString(36).substring(7).toUpperCase()}`;
 
-    if (shouldUseMocks) {
-      const order: MockOrder = {
-        id: `local_${Math.random().toString(36).substring(7)}`,
+    if (!isDbAvailable) {
+      console.warn("No DATABASE_URL found. Order will not be persisted.");
+      return {
+        id: `mock_${Math.random().toString(36).substring(7)}`,
         externalOrderId,
         userId,
+        cartId,
         status: "PENDING",
         totalAmount,
         createdAt: new Date(),
       };
-      mockOrders.set(order.id, order);
-      return order;
     }
 
     return await prisma.orderShadow.create({
       data: {
         externalOrderId,
         userId,
+        cartId,
         status: "PENDING",
         totalAmount,
       },
@@ -41,11 +31,7 @@ export class OrderService {
   }
 
   async updateOrderStatus(orderId: string, status: string) {
-    if (shouldUseMocks) {
-      const order = mockOrders.get(orderId);
-      if (order) order.status = status;
-      return order;
-    }
+    if (!isDbAvailable) return null;
 
     return await prisma.orderShadow.update({
       where: { id: orderId },
@@ -54,11 +40,7 @@ export class OrderService {
   }
 
   async getOrdersByUser(userId: string) {
-    if (shouldUseMocks) {
-      return Array.from(mockOrders.values())
-        .filter(o => o.userId === userId)
-        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    }
+    if (!isDbAvailable) return [];
 
     return await prisma.orderShadow.findMany({
       where: { userId },
@@ -67,9 +49,7 @@ export class OrderService {
   }
 
   async getOrderById(orderId: string) {
-    if (shouldUseMocks) {
-      return mockOrders.get(orderId) || null;
-    }
+    if (!isDbAvailable) return null;
 
     return await prisma.orderShadow.findUnique({
       where: { id: orderId },

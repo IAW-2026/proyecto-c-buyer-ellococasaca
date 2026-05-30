@@ -1,6 +1,6 @@
 export interface Product {
   id: string;
-  sellerId: string;
+  userId: string;
   title: string;
   description: string;
   price: number;
@@ -20,23 +20,16 @@ export interface Product {
   category?: string;
   team?: string;
   season: string;
-  size: string[];
+  size?: string[];
+  
+  /** Personalización / Inscripción */
+  player?: string;
+  number?: number;
 }
 
 export interface ProductFilters {
   search?: string;
-  kind?: "CLUB" | "NATIONAL_TEAM";
-  leagueId?: string;
-  teamId?: string;
-  nationalTeamId?: string;
-
-  /** Legacy: se va a deprecar cuando Seller exponga IDs */
-  category?: string;
-  team?: string;
-
-  season?: string;
-  sellerId?: string;
-  inStock?: boolean;
+  userId?: string;
   minPrice?: number;
   maxPrice?: number;
 }

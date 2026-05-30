@@ -1,5 +1,6 @@
 import { Product } from "@/types/product";
 import Link from "next/link";
+import Image from "next/image";
 import { getLeagueById, getTeamById } from "@/lib/catalog/leagues";
 import { getNationalTeamById } from "@/lib/catalog/national-teams";
 
@@ -34,11 +35,20 @@ export const ProductCard = ({ product }: ProductCardProps) => {
         </div>
       )}
 
+      {/* Badge de Jugador */}
+      {product.player && (
+        <div className="absolute top-4 right-4 z-10 bg-blue-600 text-white text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg shadow-lg italic">
+          {product.player} #{product.number}
+        </div>
+      )}
+
       <div className="aspect-[4/5] w-full overflow-hidden bg-slate-50 relative">
-        <img
+        <Image
           src={product.imageUrl}
           alt={product.title}
-          className="h-full w-full object-cover object-center group-hover:scale-110 transition-transform duration-500"
+          fill
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          className="object-cover object-center group-hover:scale-110 transition-transform duration-500"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       </div>

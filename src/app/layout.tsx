@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
-import { ShoppingCart, Shirt } from "lucide-react";
+import { Shirt } from "lucide-react";
 import { ClerkProvider, SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import CartCount from "@/components/layout/CartCount";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -11,6 +12,8 @@ export const metadata: Metadata = {
   title: "El Loco Casaca | Buyer App",
   description: "Tu marketplace de camisetas de fútbol",
 };
+
+export const dynamic = "force-dynamic";
 
 export default function RootLayout({
   children,
@@ -39,18 +42,13 @@ export default function RootLayout({
                   <nav className="hidden md:flex items-center gap-8 text-sm font-bold uppercase tracking-widest text-gray-500">
                     <Link href="/" className="hover:text-blue-600 transition-colors">Inicio</Link>
                     <Link href="/products" className="hover:text-blue-600 transition-colors">Catálogo</Link>
+                    <SignedIn>
+                      <Link href="/orders" className="hover:text-blue-600 transition-colors">Mis Pedidos</Link>
+                    </SignedIn>
                   </nav>
                   
                   <div className="flex items-center gap-4 border-l pl-6 border-gray-100">
-                    <Link 
-                      href="/cart" 
-                      className="group p-2.5 bg-gray-50 hover:bg-blue-50 text-gray-600 hover:text-blue-600 rounded-full transition-all relative"
-                    >
-                      <ShoppingCart className="h-6 w-6" />
-                      <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-[10px] font-bold h-5 w-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm">
-                        0
-                      </span>
-                    </Link>
+                    <CartCount />
 
                     <SignedOut>
                       <SignInButton mode="modal">

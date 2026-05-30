@@ -1,8 +1,9 @@
 import { orderService } from "@/services/order.service";
+import { cartService } from "@/services/cart.service";
 import { shippingApi } from "@/lib/api-clients/shipping";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, Package, Truck, CheckCircle2, MapPin, Calendar, CreditCard } from "lucide-react";
+import { ChevronLeft, Package, Truck, CheckCircle2, MapPin, Calendar, CreditCard, MessageSquare } from "lucide-react";
 import { auth } from "@clerk/nextjs/server";
 
 interface OrderDetailPageProps {
@@ -10,6 +11,8 @@ interface OrderDetailPageProps {
     id: string;
   };
 }
+
+export const dynamic = "force-dynamic";
 
 export default async function OrderDetailPage({ params }: OrderDetailPageProps) {
   const { userId } = auth();
@@ -24,6 +27,7 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
     notFound();
   }
 
+  const cart = (order as any).cartId ? await cartService.getCartById((order as any).cartId) : null;
   const shipment = await shippingApi.getShipmentByOrderId(order.id);
 
   const steps = [
@@ -47,7 +51,7 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
       </nav>
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-[40px] shadow-2xl shadow-blue-900/5 border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-[40px] shadow-2xl shadow-blue-900/5 border border-gray-100 overflow-hidden mb-12">
           {/* Header de la Orden */}
           <div className="bg-blue-600 p-8 lg:p-12 text-white">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
@@ -119,6 +123,57 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                 </button>
               </div>
             )}
+          </div>
+
+          {/* Productos del Pedido */}
+          <div className="p-8 lg:p-12 border-b border-gray-50">
+             <div className="flex items-center gap-4 mb-8">
+              <div className="bg-blue-600 p-2.5 rounded-xl shadow-lg shadow-blue-200">
+                <Package className="w-5 h-5 text-white" />
+              </div>
+              <h2 className="text-2xl font-black uppercase italic tracking-tighter text-gray-900">
+                Productos <span className="text-blue-600">comprados</span>
+              </h2>
+            </div>
+
+            <div className="space-y-6">
+              {cart?.items.map((item) => (
+                <div key={item.id} className="flex items-center gap-6 p-4 bg-gray-50 rounded-[24px] border border-gray-100 group">
+                  <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-2xl bg-white border border-gray-100">
+                    <img
+                      src={item.productImage}
+                      alt={item.productName}
+                      className="h-full w-full object-cover transition-transform group-hover:scale-110"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg font-black uppercase italic tracking-tighter text-gray-900 truncate">
+                      {item.productName}
+                    </h3>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                      Cantidad: {item.quantity} • ${item.priceAtAdded.toLocaleString('es-AR')} c/u
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-black text-gray-900 italic">
+                      ${(item.priceAtAdded * item.quantity).toLocaleString('es-AR')}
+                    </p>
+                    {shipment?.status === 'DELIVERED' && (
+                      <Link 
+                        href={`/products/${item.productId}?orderId=${order.externalOrderId}`}
+                        className="inline-flex items-center gap-1.5 mt-2 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 transition-colors"
+                      >
+                        <MessageSquare className="w-3 h-3" />
+                        Dejar opinión
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {!cart && (
+                 <p className="text-sm font-medium text-gray-400 italic">No se pudo recuperar la lista de productos.</p>
+              )}
+            </div>
           </div>
 
           {/* Información Adicional */}

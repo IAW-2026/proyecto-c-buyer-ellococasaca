@@ -2,7 +2,7 @@ import { sellerApi } from "@/lib/api-clients/seller";
 import { feedbackApi } from "@/lib/api-clients/feedback";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, Star, ShieldCheck, ShoppingBag, MessageSquare } from "lucide-react";
+import { ChevronLeft, Star, ShieldCheck, User, MessageSquare, ShoppingBag } from "lucide-react";
 import { ProductCard } from "@/components/products/ProductCard";
 
 interface SellerProfilePageProps {
@@ -43,7 +43,7 @@ export default async function SellerProfilePage({ params }: SellerProfilePagePro
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
             <div className="flex items-center gap-6">
               <div className="h-24 w-24 bg-blue-600 rounded-[32px] flex items-center justify-center shadow-xl shadow-blue-200">
-                <ShoppingBag className="w-10 h-10 text-white" />
+                <User className="w-10 h-10 text-white" />
               </div>
               <div>
                 <div className="flex items-center gap-3 mb-2">
@@ -95,7 +95,7 @@ export default async function SellerProfilePage({ params }: SellerProfilePagePro
                 Productos de <span className="text-blue-600">este vendedor</span>
               </h2>
             </div>
-            
+
             <div className="grid sm:grid-cols-2 gap-6">
               {products.map((product) => (
                 <ProductCard key={product.id} product={product} />

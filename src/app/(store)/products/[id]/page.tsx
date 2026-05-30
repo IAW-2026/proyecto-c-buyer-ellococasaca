@@ -1,10 +1,12 @@
 import { sellerApi } from "@/lib/api-clients/seller";
 import { feedbackApi } from "@/lib/api-clients/feedback";
 import { shippingApi } from "@/lib/api-clients/shipping";
+import { orderService } from "@/services/order.service";
+import { cartService } from "@/services/cart.service";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, ShieldCheck, Star, MessageSquare, Send } from "lucide-react";
-import { AddToCartButton } from "@/components/products/AddToCartButton";
+import { ProductActions } from "@/components/products/ProductActions";
 import { getLeagueById, getTeamById } from "@/lib/catalog/leagues";
 import { getNationalTeamById } from "@/lib/catalog/national-teams";
 import { auth } from "@clerk/nextjs/server";
@@ -14,9 +16,14 @@ interface ProductPageProps {
   params: {
     id: string;
   };
+  searchParams: {
+    orderId?: string;
+  };
 }
 
-export default async function ProductDetailPage({ params }: ProductPageProps) {
+export const dynamic = "force-dynamic";
+
+export default async function ProductDetailPage({ params, searchParams }: ProductPageProps) {
   const { userId } = auth();
   
   const [product, reviews, rating] = await Promise.all([
@@ -31,9 +38,24 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
 
   const seller = await sellerApi.getSellerById(product.sellerId);
 
-  // Simulación de chequeo de producto entregado para habilitar reseña
-  // En una app real buscaríamos en la DB local una orden DELIVERED para este userId y productId
-  const canReview = userId && reviews.every(r => r.buyerId !== userId); 
+  // Chequeo de producto entregado para habilitar reseña
+  let hasDeliveredOrder = false;
+  if (userId) {
+    const userOrders = await orderService.getOrdersByUser(userId);
+    for (const order of userOrders) {
+      const shipment = await shippingApi.getShipmentByOrderId(order.id);
+      if (shipment?.status === 'DELIVERED') {
+        const cart = (order as any).cartId ? await cartService.getCartById((order as any).cartId) : null;
+        if (cart?.items.some(i => i.productId === params.id)) {
+          hasDeliveredOrder = true;
+          break;
+        }
+      }
+    }
+  }
+
+  const canReview = userId && hasDeliveredOrder && reviews.every(r => r.buyerId !== userId); 
+  const currentOrderId = searchParams.orderId || "mock_order_123";
 
   const leagueName = product.leagueId ? getLeagueById(product.leagueId)?.name : undefined;
   const teamName = product.teamId ? getTeamById(product.teamId)?.team.name ?? product.team : product.team;
@@ -130,6 +152,14 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Temporada</h3>
                   <p className="text-xl font-bold text-gray-900 uppercase tracking-tight">{product.season}</p>
                 </div>
+                {product.player && (
+                  <div className="col-span-2 pt-4 border-t border-gray-50/50">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-1">Inscripción Especial</h3>
+                    <p className="text-2xl font-black text-gray-900 uppercase italic tracking-tighter">
+                      {product.player} <span className="text-blue-600">#{product.number}</span>
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Información del Vendedor */}
@@ -153,24 +183,10 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
                 </div>
               )}
 
-              <div>
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">Talles disponibles</h3>
-                <div className="flex flex-wrap gap-3">
-                  {product.size.map((s) => (
-                    <button 
-                      key={s} 
-                      className="h-14 w-14 flex items-center justify-center border-2 border-gray-100 rounded-2xl text-sm font-black text-gray-900 hover:border-blue-600 hover:text-blue-600 transition-all active:scale-90"
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <ProductActions productId={product.id} sizes={product.size} stock={product.stock} />
             </div>
 
             <div className="mt-12 space-y-6">
-              <AddToCartButton productId={product.id} disabled={product.stock === 0} />
-              
               <div className="flex items-center justify-center gap-3 py-4 px-6 bg-gray-50 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
                 <ShieldCheck className="w-5 h-5 text-emerald-500" />
                 Compra 100% Protegida
@@ -198,7 +214,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
                 <form action={submitReviewAction} className="space-y-4">
                   <input type="hidden" name="productId" value={product.id} />
                   <input type="hidden" name="sellerId" value={product.sellerId} />
-                  <input type="hidden" name="orderId" value="mock_order_123" />
+                  <input type="hidden" name="orderId" value={currentOrderId} />
                   
                   <div>
                     <label className="text-[10px] font-black uppercase tracking-widest opacity-70">Puntaje Producto</label>

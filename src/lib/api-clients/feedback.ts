@@ -16,6 +16,60 @@ export type RatingsCache = {
   totalReviews: number;
 };
 
+// Singleton pattern for the mock store to survive HMR in Next.js development
+declare global {
+  var __mock_reviews_store: Map<string, Review[]> | undefined;
+}
+
+const mockReviewsStore = globalThis.__mock_reviews_store ?? new Map<string, Review[]>();
+
+if (process.env.NODE_ENV !== "production") {
+  globalThis.__mock_reviews_store = mockReviewsStore;
+}
+
+// Initialize with some static data only if empty
+if (mockReviewsStore.size === 0) {
+  mockReviewsStore.set("1", [
+    {
+      id: "rev_1",
+      orderId: "ORD-DEMO1",
+      buyerId: "user_1",
+      sellerId: "user_1",
+      productId: "1",
+      ratingProduct: 5,
+      ratingSeller: 5,
+      comment: "Excelente calidad, muy conforme.",
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "rev_2",
+      orderId: "ORD-DEMO2",
+      buyerId: "user_2",
+      sellerId: "user_1",
+      productId: "1",
+      ratingProduct: 4,
+      ratingSeller: 5,
+      comment: "Llegó un poco tarde pero la camiseta está genial.",
+      createdAt: new Date().toISOString(),
+    }
+  ]);
+  
+  // Agregar algunas para otros productos para que no se vea vacío
+  mockReviewsStore.set("2", [
+    {
+      id: "rev_3",
+      orderId: "ORD-DEMO3",
+      buyerId: "user_3",
+      sellerId: "user_1",
+      productId: "2",
+      ratingProduct: 5,
+      ratingSeller: 5,
+      comment: "Talle perfecto, tal cual la descripción.",
+      createdAt: new Date().toISOString(),
+    }
+  ]);
+}
+
 export class FeedbackApiClient {
   private useMocks: boolean;
   private baseUrl: string;
@@ -28,30 +82,7 @@ export class FeedbackApiClient {
   async getProductReviews(productId: string): Promise<Review[]> {
     if (this.useMocks) {
       await new Promise(resolve => setTimeout(resolve, 300));
-      return [
-        {
-          id: "rev_1",
-          orderId: "ord_1",
-          buyerId: "user_1",
-          sellerId: "seller_1",
-          productId,
-          ratingProduct: 5,
-          ratingSeller: 5,
-          comment: "Excelente calidad, muy conforme.",
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: "rev_2",
-          orderId: "ord_2",
-          buyerId: "user_2",
-          sellerId: "seller_1",
-          productId,
-          ratingProduct: 4,
-          ratingSeller: 5,
-          comment: "Llegó un poco tarde pero la camiseta está genial.",
-          createdAt: new Date().toISOString(),
-        }
-      ];
+      return mockReviewsStore.get(productId) || [];
     }
 
     const response = await fetch(`${this.baseUrl}/api/reviews/product/${productId}`);
@@ -61,10 +92,14 @@ export class FeedbackApiClient {
 
   async getProductRating(productId: string): Promise<RatingsCache | null> {
     if (this.useMocks) {
+      const reviews = mockReviewsStore.get(productId) || [];
+      if (reviews.length === 0) return { targetId: productId, averageRating: 0, totalReviews: 0 };
+      
+      const avg = reviews.reduce((sum, r) => sum + r.ratingProduct, 0) / reviews.length;
       return {
         targetId: productId,
-        averageRating: 4.5,
-        totalReviews: 2,
+        averageRating: Number(avg.toFixed(1)),
+        totalReviews: reviews.length,
       };
     }
 
@@ -76,19 +111,8 @@ export class FeedbackApiClient {
   async getSellerReviews(sellerId: string): Promise<Review[]> {
     if (this.useMocks) {
       await new Promise(resolve => setTimeout(resolve, 300));
-      return [
-        {
-          id: "rev_s1",
-          orderId: "ord_s1",
-          buyerId: "user_s1",
-          sellerId,
-          productId: "1",
-          ratingProduct: 5,
-          ratingSeller: 5,
-          comment: "Vendedor muy atento y rápido.",
-          createdAt: new Date().toISOString(),
-        }
-      ];
+      const allReviews = Array.from(mockReviewsStore.values()).flat();
+      return allReviews.filter(r => r.sellerId === sellerId);
     }
 
     const response = await fetch(`${this.baseUrl}/api/reviews/seller/${sellerId}`);
@@ -98,10 +122,14 @@ export class FeedbackApiClient {
 
   async getSellerRating(sellerId: string): Promise<RatingsCache | null> {
     if (this.useMocks) {
+      const allReviews = Array.from(mockReviewsStore.values()).flat().filter(r => r.sellerId === sellerId);
+      if (allReviews.length === 0) return { targetId: sellerId, averageRating: 5, totalReviews: 10 };
+      
+      const avg = allReviews.reduce((sum, r) => sum + r.ratingSeller, 0) / allReviews.length;
       return {
         targetId: sellerId,
-        averageRating: 4.8,
-        totalReviews: 120,
+        averageRating: Number(avg.toFixed(1)),
+        totalReviews: 120 + allReviews.length,
       };
     }
 
@@ -112,11 +140,19 @@ export class FeedbackApiClient {
 
   async createReview(review: Omit<Review, 'id' | 'createdAt'>): Promise<Review> {
     if (this.useMocks) {
-      return {
+      const newReview: Review = {
         ...review,
         id: `rev_${Math.random().toString(36).substring(7)}`,
         createdAt: new Date().toISOString(),
       };
+      
+      const current = mockReviewsStore.get(review.productId) || [];
+      // Evitar duplicados si por algún motivo se dispara la acción varias veces en el mismo tick
+      if (!current.some(r => r.comment === review.comment && r.buyerId === review.buyerId)) {
+        mockReviewsStore.set(review.productId, [newReview, ...current]);
+      }
+      
+      return newReview;
     }
 
     const response = await fetch(`${this.baseUrl}/api/reviews`, {

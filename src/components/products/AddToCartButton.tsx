@@ -17,6 +17,9 @@ export const AddToCartButton = ({ productId, disabled }: AddToCartButtonProps) =
     setIsPending(true);
     try {
       await addToCartAction(productId);
+      // Disparar evento global para que el header actualice el contador al instante
+      window.dispatchEvent(new Event("cart-updated"));
+
       setIsSuccess(true);
       setTimeout(() => setIsSuccess(false), 2000);
     } catch (error) {

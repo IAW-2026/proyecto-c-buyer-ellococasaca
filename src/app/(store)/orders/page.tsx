@@ -2,7 +2,9 @@ import { orderService } from "@/services/order.service";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ChevronRight, Package, Clock, CheckCircle2, Truck } from "lucide-react";
+import { ChevronRight, Package, Clock, CheckCircle2, Truck, X } from "lucide-react";
+
+export const dynamic = "force-dynamic";
 
 export default async function OrdersPage() {
   const { userId } = auth();
@@ -37,10 +39,12 @@ export default async function OrdersPage() {
                   <div className="flex items-center gap-6">
                     <div className={`h-16 w-16 rounded-2xl flex items-center justify-center ${
                       order.status === 'PAID' ? 'bg-emerald-50 text-emerald-600' : 
-                      order.status === 'PENDING' ? 'bg-amber-50 text-amber-600' : 'bg-gray-50 text-gray-400'
+                      order.status === 'PENDING' ? 'bg-amber-50 text-amber-600' : 
+                      order.status === 'REJECTED' ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-400'
                     }`}>
                       {order.status === 'PAID' ? <CheckCircle2 className="w-8 h-8" /> : 
-                       order.status === 'PENDING' ? <Clock className="w-8 h-8" /> : <Package className="w-8 h-8" />}
+                       order.status === 'PENDING' ? <Clock className="w-8 h-8" /> : 
+                       order.status === 'REJECTED' ? <X className="w-8 h-8" /> : <Package className="w-8 h-8" />}
                     </div>
                     <div>
                       <div className="flex items-center gap-3 mb-1">
@@ -58,10 +62,12 @@ export default async function OrdersPage() {
                       <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-1">Estado</span>
                       <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
                         order.status === 'PAID' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 
-                        order.status === 'PENDING' ? 'bg-amber-50 text-amber-600 border border-amber-100' : 'bg-gray-50 text-gray-400 border border-gray-200'
+                        order.status === 'PENDING' ? 'bg-amber-50 text-amber-600 border border-amber-100' : 
+                        order.status === 'REJECTED' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-gray-50 text-gray-400 border border-gray-200'
                       }`}>
                         {order.status === 'PAID' ? 'Pagado' : 
-                         order.status === 'PENDING' ? 'Pendiente' : order.status}
+                         order.status === 'PENDING' ? 'Pendiente' : 
+                         order.status === 'REJECTED' ? 'Rechazado' : order.status}
                       </span>
                     </div>
                     

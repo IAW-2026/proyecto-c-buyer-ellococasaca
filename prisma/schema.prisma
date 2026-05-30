@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -35,12 +36,14 @@ model CartItem {
   productImage  String
   priceAtAdded  Float
   quantity      Int
+  size          String?
 }
 
 model OrderShadow {
   id              String   @id @default(cuid())
   externalOrderId String   @unique
   userId          String
+  cartId          String?
   status          String
   totalAmount     Float
   trackingId      String?
