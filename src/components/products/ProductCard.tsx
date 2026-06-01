@@ -1,14 +1,20 @@
+"use client";
+
 import { Product } from "@/types/product";
 import Link from "next/link";
 import Image from "next/image";
 import { getLeagueById, getTeamById } from "@/lib/catalog/leagues";
 import { getNationalTeamById } from "@/lib/catalog/national-teams";
+import { useState } from "react";
+import { Loader2 } from "lucide-react";
 
 interface ProductCardProps {
   product: Product;
+  priority?: boolean;
 }
 
-export const ProductCard = ({ product }: ProductCardProps) => {
+export const ProductCard = ({ product, priority = false }: ProductCardProps) => {
+  const [isNavigating, setIsNavigating] = useState(false);
   const isLowStock = product.stock > 0 && product.stock < 5;
 
   const leagueName = product.leagueId ? getLeagueById(product.leagueId)?.name : undefined;
@@ -22,6 +28,15 @@ export const ProductCard = ({ product }: ProductCardProps) => {
 
   return (
     <div className="group relative bg-white rounded-3xl overflow-hidden border border-gray-100 hover:border-blue-100 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-900/5 hover:-translate-y-1">
+      {/* Overlay de Carga */}
+      {isNavigating && (
+        <div className="absolute inset-0 z-50 bg-white/60 backdrop-blur-[2px] flex items-center justify-center animate-in fade-in duration-200">
+          <div className="bg-blue-600 p-3 rounded-2xl shadow-xl animate-bounce">
+            <Loader2 className="w-6 h-6 text-white animate-spin" />
+          </div>
+        </div>
+      )}
+
       {/* Badge de Stock */}
       {isLowStock && (
         <div className="absolute top-4 left-4 z-10 bg-orange-500 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-lg">
@@ -47,6 +62,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           src={product.imageUrl}
           alt={product.title}
           fill
+          priority={priority}
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           className="object-cover object-center group-hover:scale-110 transition-transform duration-500"
         />
@@ -59,7 +75,10 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             {categoryLabel} • {product.season}
           </p>
           <h3 className="text-lg font-bold text-gray-900 leading-tight group-hover:text-blue-600 transition-colors">
-            <Link href={`/products/${product.id}`}>
+            <Link 
+              href={`/products/${product.id}`}
+              onClick={() => setIsNavigating(true)}
+            >
               <span aria-hidden="true" className="absolute inset-0" />
               {product.title}
             </Link>

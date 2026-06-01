@@ -1,4 +1,4 @@
-import { CartService } from "../cart.service";
+import { CartService } from "./cart.service";
 import { Product } from "@/types/product";
 
 // Mock de Prisma para evitar errores si no está configurado

@@ -5,6 +5,7 @@ import { removeFromCartAction, updateCartItemQuantityAction } from "@/lib/action
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { CartRefreshTrigger } from "@/components/cart/CartRefreshTrigger";
+import { LoadingLink } from "@/components/ui/LoadingLink";
 
 export default async function CartPage({
   searchParams,
@@ -47,12 +48,12 @@ export default async function CartPage({
             <h2 className="mt-4 text-lg font-medium text-gray-900">Tu carrito está vacío</h2>
             <p className="mt-2 text-sm text-gray-500">¿Buscás algo especial? Revisá nuestro catálogo.</p>
             <div className="mt-6">
-              <Link
-                href="/"
+              <LoadingLink
+                href="/products"
                 className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-xl shadow-sm text-white bg-blue-600 hover:bg-blue-700"
               >
                 Ir a la tienda
-              </Link>
+              </LoadingLink>
             </div>
           </div>
         ) : (
@@ -79,15 +80,15 @@ export default async function CartPage({
                           <div>
                             <div className="flex justify-between">
                               <h3 className="text-sm">
-                                <Link href={`/products/${item.productId}`} className="font-bold text-gray-700 hover:text-gray-800">
+                                <LoadingLink href={`/products/${item.productId}`} className="font-bold text-gray-700 hover:text-gray-800">
                                   {item.productName}
-                                </Link>
+                                </LoadingLink>
                               </h3>
                             </div>
                             
                             <div className="mt-4 flex items-center gap-3">
                               <form action={decreaseAction}>
-                                <button className="p-1 rounded-md border border-gray-200 hover:bg-gray-100 transition-colors">
+                                <button className="p-1 rounded-md border border-gray-200 hover:bg-100 transition-colors">
                                   <Minus className="h-4 w-4 text-gray-600" />
                                 </button>
                               </form>
@@ -95,7 +96,7 @@ export default async function CartPage({
                               <span className="text-sm font-bold w-4 text-center">{item.quantity}</span>
                               
                               <form action={increaseAction}>
-                                <button className="p-1 rounded-md border border-gray-200 hover:bg-gray-100 transition-colors">
+                                <button className="p-1 rounded-md border border-gray-200 hover:bg-100 transition-colors">
                                   <Plus className="h-4 w-4 text-gray-600" />
                                 </button>
                               </form>
@@ -157,13 +158,13 @@ export default async function CartPage({
               </dl>
 
               <div className="mt-6">
-                <Link
+                <LoadingLink
                   href="/checkout"
                   className="w-full bg-blue-600 border border-transparent rounded-xl shadow-sm py-3 px-4 text-base font-bold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all flex items-center justify-center group"
                 >
                   Continuar al pago
                   <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                </Link>
+                </LoadingLink>
               </div>
               
               <div className="mt-4 text-center">

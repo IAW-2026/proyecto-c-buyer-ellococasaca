@@ -1,5 +1,7 @@
 import { sellerApi } from "@/lib/api-clients/seller";
 import { ProductCard } from "@/components/products/ProductCard";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 export default async function HomePage() {
   const products = await sellerApi.getProducts();
@@ -18,22 +20,23 @@ export default async function HomePage() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600"></span>
               </span>
-              Nueva Colección 2024
+              Nueva Colección 2026
             </div>
             <h1 className="text-6xl md:text-8xl font-black tracking-tighter text-gray-900 uppercase italic leading-[0.85]">
               Vestí tu <br />
               <span className="text-blue-600 not-italic">Pasión</span>
             </h1>
             <p className="mt-8 text-xl md:text-2xl text-gray-600 leading-relaxed max-w-2xl font-medium">
-              Explorá nuestra selección exclusiva de camisetas retro y actuales. <span className="text-gray-900 font-bold">Calidad premium</span> para los verdaderos locos por la casaca.
+              Explorá nuestra selección exclusiva de camisetas retro y actuales para los verdaderos locos por la casaca.
             </p>
             <div className="mt-12 flex flex-wrap gap-5">
-              <button className="bg-blue-600 text-white px-10 py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-2xl shadow-blue-200 active:scale-95">
+              <Link 
+                href="/products"
+                className="bg-blue-600 text-white px-10 py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-2xl shadow-blue-200 active:scale-95 flex items-center gap-3"
+              >
                 Ver Colección
-              </button>
-              <button className="bg-white text-gray-900 border-2 border-gray-100 px-10 py-5 rounded-2xl font-black uppercase tracking-widest hover:border-blue-100 hover:bg-blue-50/30 transition-all active:scale-95">
-                Ofertas
-              </button>
+                <ArrowRight className="w-6 h-6" />
+              </Link>
             </div>
           </div>
         </div>
@@ -47,17 +50,11 @@ export default async function HomePage() {
             </h2>
             <div className="h-1.5 w-20 bg-blue-600 mt-2 rounded-full" />
           </div>
-          <div className="flex gap-4">
-             {/* Aquí irán los filtros y búsqueda más adelante */}
-             <div className="bg-white border border-gray-100 px-4 py-2 rounded-xl text-sm font-bold text-gray-500 uppercase tracking-widest cursor-not-allowed">
-               Filtrar
-             </div>
-          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
+          {products.map((product, index) => (
+            <ProductCard key={product.id} product={product} priority={index < 4} />
           ))}
         </div>
 

@@ -4,7 +4,7 @@ import { Product, ProductFilters } from "@/types/product";
 const MOCK_PRODUCTS: Product[] = [
   {
     id: "1",
-    userId: "user_1",
+    sellerId: "user_1",
     title: "Camiseta Argentina 3 Estrellas - Titular",
     description: "La camiseta oficial del campeón del mundo con las tres estrellas bordadas. Tecnología AEROREADY.",
     price: 85000,
@@ -21,7 +21,7 @@ const MOCK_PRODUCTS: Product[] = [
   },
   {
     id: "2",
-    userId: "user_1",
+    sellerId: "user_1",
     title: "Camiseta Real Madrid - Local",
     description: "La clásica blanca del Madrid. Temporada 2023/24. Versión estadio.",
     price: 75000,
@@ -37,7 +37,7 @@ const MOCK_PRODUCTS: Product[] = [
   },
   {
     id: "3",
-    userId: "user_2",
+    sellerId: "user_2",
     title: "Camiseta Boca Juniors - Alternativa",
     description: "Camiseta alternativa amarilla de Boca Juniors. Inspirada en la historia del club.",
     price: 70000,
@@ -53,7 +53,7 @@ const MOCK_PRODUCTS: Product[] = [
   },
   {
     id: "4",
-    userId: "user_3",
+    sellerId: "user_3",
     title: "Camiseta Manchester City - Titular",
     description: "Edición especial del triplete. Azul celeste clásico.",
     price: 90000,
@@ -71,7 +71,7 @@ const MOCK_PRODUCTS: Product[] = [
   },
   {
     id: "5",
-    userId: "user_1",
+    sellerId: "user_1",
     title: "Camiseta Liverpool - Local",
     description: "Jersey tradicional rojo del Liverpool FC.",
     price: 80000,
@@ -87,7 +87,7 @@ const MOCK_PRODUCTS: Product[] = [
   },
   {
     id: "6",
-    userId: "user_2",
+    sellerId: "user_2",
     title: "Camiseta Arsenal - Alternativa",
     description: "Jersey blanco alternativo del Arsenal.",
     price: 72000,
@@ -103,7 +103,7 @@ const MOCK_PRODUCTS: Product[] = [
   },
   {
     id: "7",
-    userId: "user_3",
+    sellerId: "user_3",
     title: "Camiseta Barcelona - Local",
     description: "Jersey azulgrana clásico del Barcelona.",
     price: 85000,
@@ -119,7 +119,7 @@ const MOCK_PRODUCTS: Product[] = [
   },
   {
     id: "8",
-    userId: "user_1",
+    sellerId: "user_1",
     title: "Camiseta Atlético Madrid - Alternativa",
     description: "Jersey azul y blanco alternativo del Atlético.",
     price: 78000,
@@ -135,7 +135,7 @@ const MOCK_PRODUCTS: Product[] = [
   },
   {
     id: "9",
-    userId: "user_2",
+    sellerId: "user_2",
     title: "Camiseta River Plate - Local",
     description: "Jersey blanco con banda roja del club más grande de Argentina.",
     price: 68000,
@@ -151,7 +151,7 @@ const MOCK_PRODUCTS: Product[] = [
   },
   {
     id: "10",
-    userId: "user_3",
+    sellerId: "user_3",
     title: "Camiseta Racing Club - Local",
     description: "Jersey celeste con banda blanca del Racing Club.",
     price: 65000,
@@ -167,7 +167,7 @@ const MOCK_PRODUCTS: Product[] = [
   },
   {
     id: "11",
-    userId: "user_1",
+    sellerId: "user_1",
     title: "Camiseta Brasil - Titular",
     description: "Jersey amarilla del pentacampeón mundial.",
     price: 88000,
@@ -182,7 +182,7 @@ const MOCK_PRODUCTS: Product[] = [
   },
   {
     id: "12",
-    userId: "user_3",
+    sellerId: "user_3",
     title: "Camiseta Napoli Retro - Maradona",
     description: "Edición histórica del Napoli de los 80. La gloria de Diego.",
     price: 120000,
@@ -252,8 +252,8 @@ export class SellerApiClient {
         products = products.filter((p) => p.season === filters.season);
       }
 
-      if (filters?.userId) {
-        products = products.filter((p) => p.userId === filters.userId);
+      if (filters?.sellerId) {
+        products = products.filter((p) => p.sellerId === filters.sellerId);
       }
 
       if (typeof filters?.inStock === "boolean") {

@@ -1,6 +1,6 @@
 export interface Product {
   id: string;
-  userId: string;
+  sellerId: string;
   title: string;
   description: string;
   price: number;
@@ -29,7 +29,15 @@ export interface Product {
 
 export interface ProductFilters {
   search?: string;
-  userId?: string;
+  sellerId?: string;
+  kind?: "CLUB" | "NATIONAL_TEAM";
+  leagueId?: string;
+  teamId?: string;
+  nationalTeamId?: string;
+  category?: string;
+  team?: string;
+  season?: string;
+  inStock?: boolean;
   minPrice?: number;
   maxPrice?: number;
 }

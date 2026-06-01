@@ -183,7 +183,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
                 </div>
               )}
 
-              <ProductActions productId={product.id} sizes={product.size} stock={product.stock} />
+              <ProductActions productId={product.id} sizes={product.size ?? []} stock={product.stock} />
             </div>
 
             <div className="mt-12 space-y-6">

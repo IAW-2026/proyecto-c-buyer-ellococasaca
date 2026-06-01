@@ -272,7 +272,7 @@ export function ProductFilters() {
               type="text"
               value={season}
               onChange={(e) => updateFilters({ season: e.target.value })}
-              placeholder="Ej: 2024"
+              placeholder="Ej: 2026"
               className="w-full px-5 py-4 rounded-2xl border border-gray-100 bg-gray-50 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500/20 font-bold text-gray-700 transition-all placeholder:text-gray-300 placeholder:font-medium"
             />
           </div>

@@ -70,10 +70,10 @@ export default async function ProductsPage({
             </div>
             <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-gray-900 uppercase italic leading-[0.8]">
               Catálogo <br />
-              <span className="text-blue-600 not-italic">Premium</span>
+              <span className="text-blue-600 not-italic">Completo</span>
             </h1>
             <p className="mt-6 text-gray-500 font-medium max-w-md text-lg leading-relaxed">
-              Explorá la colección más completa de camisetas retro y actuales con calidad de exportación.
+              Explorá la colección más completa de camisetas retro y actuales.
             </p>
           </div>
 
@@ -101,8 +101,8 @@ export default async function ProductsPage({
 
         {products.length > 0 ? (
           <div className="grid grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
+            {products.map((product, index) => (
+              <ProductCard key={product.id} product={product} priority={index < 4} />
             ))}
           </div>
         ) : (
