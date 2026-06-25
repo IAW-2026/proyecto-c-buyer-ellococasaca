@@ -77,14 +77,22 @@ export default function RootLayout({
                       </SignInButton>
                     </SignedOut>
                     <SignedIn>
-                      <UserButton 
-                        afterSignOutUrl="/"
-                        appearance={{
-                          elements: {
-                            avatarBox: "h-10 w-10 rounded-xl"
-                          }
-                        }}
-                      />
+                      <div className="flex items-center gap-4">
+                        <UserButton 
+                          afterSignOutUrl="/"
+                          appearance={{
+                            elements: {
+                              avatarBox: "h-10 w-10 rounded-xl"
+                            }
+                          }}
+                        />
+                        <Link 
+                          href="/logout" 
+                          className="text-[10px] font-black uppercase tracking-widest text-red-500 hover:text-red-600 transition-colors border-l pl-4 border-gray-100"
+                        >
+                          Salir
+                        </Link>
+                      </div>
                     </SignedIn>
                   </div>
                 </div>

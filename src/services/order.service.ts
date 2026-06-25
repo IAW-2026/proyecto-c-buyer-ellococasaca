@@ -78,18 +78,38 @@ export class OrderService {
         // Combinamos las órdenes del seller con las de la base local
         const merged = [...localOrders];
         for (const so of sellerOrders) {
-          const extId = so.externalOrderId || so.id;
+          // Normalizar el id externo del seller. Si no tiene y no empieza por ORD-, 
+          // evitamos mezclarlo como una nueva orden de checkout independiente.
+          const extId = so.externalOrderId || so.orderId || (typeof so.id === 'string' && so.id.startsWith('ORD-') ? so.id : null);
+          if (!extId) {
+            continue; // Evitar inyectar datos basura en la interfaz del Buyer
+          }
+
           const localOrder = merged.find(lo => lo.externalOrderId === extId);
+          
+          // Mapeamos el estado del Seller ('pending', 'prepared', 'shipped') al esperado por el Buyer ('PAID', 'PENDING', 'REJECTED')
+          let normalizedStatus = 'PAID';
+          if (so.status) {
+            const upperStatus = so.status.toUpperCase();
+            if (['PENDING', 'PREPARING'].includes(upperStatus)) {
+              normalizedStatus = 'PENDING';
+            } else if (['REJECTED', 'CANCELLED', 'CANCELED'].includes(upperStatus)) {
+              normalizedStatus = 'REJECTED';
+            } else {
+              normalizedStatus = 'PAID';
+            }
+          }
+
           if (localOrder) {
             // Si ya existe localmente, actualizamos el estado y el tracking con lo del Seller
-            if (localOrder.status !== so.status) {
-              localOrder.status = so.status || localOrder.status;
+            if (localOrder.status !== normalizedStatus) {
+              localOrder.status = normalizedStatus;
               
               // Actualizamos en segundo plano la base de datos local
               if (isDbAvailable && !localOrder.id.startsWith('mock_')) {
                 prisma.orderShadow.update({
                   where: { id: localOrder.id },
-                  data: { status: so.status },
+                  data: { status: normalizedStatus },
                 }).catch(e => console.error("Error background updating order status from seller:", e));
               }
             }
@@ -102,8 +122,8 @@ export class OrderService {
               externalOrderId: extId,
               userId: so.buyerId || userId,
               cartId: so.cartId || null,
-              status: so.status || 'PAID',
-              totalAmount: so.totalAmount || so.amount || 0,
+              status: normalizedStatus,
+              totalAmount: so.totalAmount || so.amount || so.total_sale_price || 0,
               trackingId: so.trackingId || null,
               createdAt: so.createdAt ? new Date(so.createdAt) : new Date(),
             });
@@ -138,15 +158,27 @@ export class OrderService {
         const { userId } = auth();
         if (userId) {
           const sellerOrders = await sellerApi.getOrdersByBuyer(userId);
-          const match = sellerOrders.find((so: any) => (so.id === orderId || so.externalOrderId === orderId || `mock_${so.id}` === orderId));
+          const match = sellerOrders.find((so: any) => (so.id === orderId || so.externalOrderId === orderId || so.orderId === orderId || `mock_${so.id}` === orderId));
           if (match) {
+            let normalizedStatus = 'PAID';
+            if (match.status) {
+              const upperStatus = match.status.toUpperCase();
+              if (['PENDING', 'PREPARING'].includes(upperStatus)) {
+                normalizedStatus = 'PENDING';
+              } else if (['REJECTED', 'CANCELLED', 'CANCELED'].includes(upperStatus)) {
+                normalizedStatus = 'REJECTED';
+              } else {
+                normalizedStatus = 'PAID';
+              }
+            }
+
             return {
               id: orderId,
-              externalOrderId: match.externalOrderId || match.id,
+              externalOrderId: match.externalOrderId || match.orderId || match.id,
               userId,
               cartId: match.cartId || null,
-              status: match.status || 'PAID',
-              totalAmount: match.totalAmount || match.amount || 0,
+              status: normalizedStatus,
+              totalAmount: match.totalAmount || match.amount || match.total_sale_price || 0,
               trackingId: match.trackingId || null,
               createdAt: match.createdAt ? new Date(match.createdAt) : new Date(),
             };
@@ -161,16 +193,28 @@ export class OrderService {
     // Sincronizar el estado con el Seller App en tiempo real
     try {
       const sellerOrders = await sellerApi.getOrdersByBuyer(order.userId);
-      const match = sellerOrders.find((so: any) => (so.externalOrderId || so.id) === order.externalOrderId);
+      const match = sellerOrders.find((so: any) => (so.externalOrderId || so.orderId || so.id) === order.externalOrderId);
       if (match) {
-        if (order.status !== match.status) {
-          order.status = match.status || order.status;
+        let normalizedStatus = order.status;
+        if (match.status) {
+          const upperStatus = match.status.toUpperCase();
+          if (['PENDING', 'PREPARING'].includes(upperStatus)) {
+            normalizedStatus = 'PENDING';
+          } else if (['REJECTED', 'CANCELLED', 'CANCELED'].includes(upperStatus)) {
+            normalizedStatus = 'REJECTED';
+          } else {
+            normalizedStatus = 'PAID';
+          }
+        }
+
+        if (order.status !== normalizedStatus) {
+          order.status = normalizedStatus;
           
           // Actualizamos en segundo plano la base de datos local
           if (isDbAvailable && !orderId.startsWith('mock_')) {
             prisma.orderShadow.update({
               where: { id: orderId },
-              data: { status: match.status },
+              data: { status: normalizedStatus },
             }).catch(e => console.error("Error background updating shadow order status:", e));
           }
         }

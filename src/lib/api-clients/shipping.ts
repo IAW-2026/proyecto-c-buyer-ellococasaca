@@ -25,8 +25,8 @@ export class ShippingApiClient {
     try {
       const response = await fetch(`${this.baseUrl}/api/shipments?limit=50`, { next: { revalidate: 0 } });
       if (!response.ok) {
-        console.warn(`Shipping API GET /api/shipments returned ${response.status}. Falling back to mock.`);
-        return this.getMockShipment(orderId);
+        console.warn(`Shipping API GET /api/shipments returned ${response.status}.`);
+        return null;
       }
       
       const resData = await response.json();
@@ -34,14 +34,14 @@ export class ShippingApiClient {
       const found = shipments.find((s: any) => s.orderId === orderId);
       
       if (!found) {
-        console.warn(`Shipping API: Shipment for orderId ${orderId} not found. Falling back to mock.`);
-        return this.getMockShipment(orderId);
+        console.warn(`Shipping API: Shipment for orderId ${orderId} not found.`);
+        return null;
       }
       
       return found;
     } catch (e) {
-      console.warn("Failed to connect to Shipping API. Falling back to mock.", e);
-      return this.getMockShipment(orderId);
+      console.warn("Failed to connect to Shipping API.", e);
+      return null;
     }
   }
 

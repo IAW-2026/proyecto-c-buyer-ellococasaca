@@ -9,34 +9,34 @@ datasource db {
 }
 
 model User {
-  clerkId    String   @id
-  email      String   @unique
-  name       String?
-  address    String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  carts      Cart[]
+  clerkId   String   @id
+  email     String   @unique
+  name      String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  carts     Cart[]
 }
 
 model Cart {
   id        String     @id @default(cuid())
   userId    String
-  user      User       @relation(fields: [userId], references: [clerkId])
-  items     CartItem[]
   isActive  Boolean    @default(true)
   createdAt DateTime   @default(now())
+  user      User       @relation(fields: [userId], references: [clerkId])
+  items     CartItem[]
 }
 
 model CartItem {
-  id            String   @id @default(cuid())
-  cartId        String
-  cart          Cart     @relation(fields: [cartId], references: [id])
-  productId     String
-  productName   String
-  productImage  String
-  priceAtAdded  Float
-  quantity      Int
-  size          String?
+  id           String  @id @default(cuid())
+  cartId       String
+  productId    String
+  productName  String
+  productImage String
+  priceAtAdded Float
+  quantity     Int
+  size         String?
+  cart         Cart    @relation(fields: [cartId], references: [id])
 }
 
 model OrderShadow {

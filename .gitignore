@@ -44,3 +44,12 @@ clerk.md
 deploy.md
 control-plane-analytics.md
 
+# Build caches
+*.tsbuildinfo
+
+# Test & Debug Scripts
+test-*.js
+test*.js
+inspect-*.js
+inspect*.js
+

@@ -489,9 +489,15 @@ export class SellerApiClient {
     try {
       const defaultPort = process.env.PORT ?? "3001";
       const baseUrl = process.env.SELLER_API_URL ?? `http://localhost:${defaultPort}`;
-      const response = await fetch(`${baseUrl}/api/orders?buyerId=${buyerId}`, { next: { revalidate: 0 } });
+      const response = await fetch(`${baseUrl}/api/orders?buyerId=${buyerId}`, { 
+        next: { revalidate: 0 },
+        signal: AbortSignal.timeout(3000)
+      });
       if (!response.ok) {
-        const altResponse = await fetch(`${baseUrl}/api/orders/buyer/${buyerId}`, { next: { revalidate: 0 } });
+        const altResponse = await fetch(`${baseUrl}/api/orders/buyer/${buyerId}`, { 
+          next: { revalidate: 0 },
+          signal: AbortSignal.timeout(3000)
+        });
         if (!altResponse.ok) throw new Error(`Orders fetch returned status ${response.status}`);
         return await altResponse.json();
       }
