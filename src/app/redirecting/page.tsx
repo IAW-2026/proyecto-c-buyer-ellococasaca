@@ -33,7 +33,7 @@ function RedirectingContent() {
   const isRoleAdmin = role === "admin";
   const isRoleSeller = role === "seller";
   const isRoleModerator = role === "moderator";
-  const isRoleCourier = role === "courier";
+  const isRoleShipping = role === "shipping";
   
   const roleName = isRoleAdmin 
     ? "Administrador" 
@@ -41,8 +41,8 @@ function RedirectingContent() {
       ? "Vendedor" 
       : isRoleModerator
         ? "Moderador"
-        : isRoleCourier
-          ? "Repartidor (Courier)"
+        : isRoleShipping
+          ? "Repartidor / Envío (Shipping)"
           : role;
 
   const targetName = isRoleAdmin 
@@ -51,7 +51,7 @@ function RedirectingContent() {
       ? "Panel del Vendedor" 
       : isRoleModerator
         ? "Panel de Feedback"
-        : isRoleCourier
+        : isRoleShipping
           ? "Panel de Envíos (Shipping)"
           : "Panel de Destino";
 
@@ -69,7 +69,7 @@ function RedirectingContent() {
             <Store className="h-10 w-10 text-blue-600 animate-pulse" />
           ) : isRoleModerator ? (
             <MessageSquare className="h-10 w-10 text-blue-600 animate-pulse" />
-          ) : isRoleCourier ? (
+          ) : isRoleShipping ? (
             <Truck className="h-10 w-10 text-blue-600 animate-pulse" />
           ) : (
             <Loader2 className="h-10 w-10 text-blue-600 animate-spin" />
