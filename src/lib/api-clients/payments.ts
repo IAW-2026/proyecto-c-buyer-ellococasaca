@@ -82,6 +82,41 @@ export class PaymentsApiClient {
     console.log("Payments API response:", JSON.stringify(data, null, 2));
     return data;
   }
+
+  async getUserCharges(buyerId: string): Promise<any[]> {
+    let token = null;
+    try {
+      token = await auth().getToken();
+    } catch (e) {
+      console.warn("Failed to get Clerk token inside PaymentsApiClient.getUserCharges:", e);
+    }
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/api/charge/user/${buyerId}`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!response.ok) {
+        console.error(`Payments getUserCharges error: status=${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+      return data.response || [];
+    } catch (error) {
+      console.error("Error fetching user charges from Payments:", error);
+      return [];
+    }
+  }
 }
 
 export const paymentsApi = new PaymentsApiClient();

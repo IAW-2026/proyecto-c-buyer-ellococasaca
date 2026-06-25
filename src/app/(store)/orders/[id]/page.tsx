@@ -1,6 +1,7 @@
 import { orderService } from "@/services/order.service";
 import { cartService } from "@/services/cart.service";
 import { shippingApi } from "@/lib/api-clients/shipping";
+import { paymentsApi } from "@/lib/api-clients/payments";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, Package, Truck, CheckCircle2, MapPin, Calendar, CreditCard, MessageSquare } from "lucide-react";
@@ -29,6 +30,28 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
 
   const cart = (order as any).cartId ? await cartService.getCartById((order as any).cartId) : null;
   const shipment = await shippingApi.getShipmentByOrderId(order.externalOrderId);
+
+  // Reconciliar con la App de Pagos para obtener la dirección de envío real
+  let shippingAddress = null;
+  let matchedCharge = null;
+  try {
+    const charges = await paymentsApi.getUserCharges(userId);
+    const orderTime = new Date(order.createdAt).getTime();
+    
+    matchedCharge = charges.find((c: any) => {
+      const chargeAmount = parseFloat(c.amount);
+      const amountMatches = Math.abs(chargeAmount - order.totalAmount) < 0.01;
+      const chargeTime = new Date(c.created_at || c.createdAt).getTime();
+      const timeMatches = Math.abs(chargeTime - orderTime) < 10 * 60 * 1000; // ventana de 10 min
+      return amountMatches && timeMatches;
+    });
+
+    if (matchedCharge?.shipping_address) {
+      shippingAddress = matchedCharge.shipping_address;
+    }
+  } catch (err) {
+    console.error("Error reconciling order with Payments App charges:", err);
+  }
 
   const steps = [
     { label: 'Procesando', status: 'PENDING', icon: Package, done: true },
@@ -185,10 +208,17 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                 </div>
                 <div>
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Dirección de Envío</h3>
-                  <p className="text-lg font-bold text-gray-900 italic uppercase tracking-tight">
-                    Av. Alem 1253, 4to B<br />
-                    Bahía Blanca, Buenos Aires
-                  </p>
+                  {shippingAddress ? (
+                    <p className="text-lg font-bold text-gray-900 italic uppercase tracking-tight">
+                      {shippingAddress.street}<br />
+                      {shippingAddress.city}, {shippingAddress.province} {shippingAddress.postalCode || ""}
+                    </p>
+                  ) : (
+                    <p className="text-lg font-bold text-gray-900 italic uppercase tracking-tight">
+                      Av. Alem 1253, 4to B<br />
+                      Bahía Blanca, Buenos Aires
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex items-start gap-4">
@@ -197,9 +227,15 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                 </div>
                 <div>
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Método de Pago</h3>
-                  <p className="text-lg font-bold text-gray-900 italic uppercase tracking-tight">
-                    Tarjeta de Crédito • **** 4589
-                  </p>
+                  {matchedCharge ? (
+                    <p className="text-lg font-bold text-gray-900 italic uppercase tracking-tight">
+                      MercadoPago {matchedCharge.mp_payment_id ? `• Ref: ${matchedCharge.mp_payment_id}` : ""}
+                    </p>
+                  ) : (
+                    <p className="text-lg font-bold text-gray-900 italic uppercase tracking-tight">
+                      Tarjeta de Crédito • **** 4589
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
