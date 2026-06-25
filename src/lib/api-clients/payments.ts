@@ -14,6 +14,7 @@ export type ChargeRequest = {
   buyerId: string;
   sellerId: string;
   productIds: string[];
+  products?: { productId: string; quantity: number }[];
   shippingAddress: ShippingAddress;
   amount?: number;
   description?: string;
@@ -56,6 +57,7 @@ export class PaymentsApiClient {
       seller_id: request.sellerId,
       product_ids: request.productIds,
       products_id: request.productIds,
+      products: request.products,
       shipping_address: request.shippingAddress,
       amount: request.amount,
       description: request.description,

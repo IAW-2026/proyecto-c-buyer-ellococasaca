@@ -119,6 +119,10 @@ export async function checkoutAction(formData: FormData) {
     const groupItems = groupsBySeller[sellerId];
     const groupTotal = groupItems.reduce((sum, gi) => sum + gi.item.priceAtAdded * gi.item.quantity, 0);
     const productIds = groupItems.map(gi => gi.item.productId);
+    const products = groupItems.map(gi => ({
+      productId: gi.item.productId,
+      quantity: gi.item.quantity,
+    }));
 
     // 1. Crear Orden Shadow local para este vendedor
     const order = await orderService.createOrder(userId, groupTotal, cart.id);
@@ -131,6 +135,7 @@ export async function checkoutAction(formData: FormData) {
         buyerId: userId,
         sellerId,
         productIds,
+        products,
         shippingAddress: parsedAddress,
         amount: groupTotal,
         description: `Compra en El Loco Casaca - Vendedor: ${sellerId} - ${groupItems.length} productos. Envío a: ${address}`,
