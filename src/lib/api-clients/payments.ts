@@ -111,7 +111,11 @@ export class PaymentsApiClient {
       }
 
       const data = await response.json();
-      return data.response || [];
+      let charges = data.response || [];
+      if (Array.isArray(charges) && charges.length === 1 && Array.isArray(charges[0])) {
+        charges = charges[0];
+      }
+      return charges;
     } catch (error) {
       console.error("Error fetching user charges from Payments:", error);
       return [];

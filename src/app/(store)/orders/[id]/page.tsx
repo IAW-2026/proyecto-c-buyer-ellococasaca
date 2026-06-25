@@ -39,11 +39,12 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
     const orderTime = new Date(order.createdAt).getTime();
     
     matchedCharge = charges.find((c: any) => {
+      const orderIdMatches = c.order_id === order.externalOrderId || c.orderId === order.externalOrderId;
       const chargeAmount = parseFloat(c.amount);
       const amountMatches = Math.abs(chargeAmount - order.totalAmount) < 0.01;
       const chargeTime = new Date(c.created_at || c.createdAt).getTime();
-      const timeMatches = Math.abs(chargeTime - orderTime) < 10 * 60 * 1000; // ventana de 10 min
-      return amountMatches && timeMatches;
+      const timeMatches = Math.abs(chargeTime - orderTime) < 15 * 60 * 1000; // 15 min window
+      return orderIdMatches || (amountMatches && timeMatches);
     });
 
     if (matchedCharge?.shipping_address) {

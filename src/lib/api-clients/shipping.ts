@@ -45,6 +45,25 @@ export class ShippingApiClient {
     }
   }
 
+  async getAllShipments(): Promise<Shipment[]> {
+    if (this.useMocks) {
+      return [];
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/api/shipments?limit=50`, { next: { revalidate: 0 } });
+      if (!response.ok) {
+        console.warn(`Shipping API GET /api/shipments returned ${response.status}.`);
+        return [];
+      }
+      const resData = await response.json();
+      return resData.data || [];
+    } catch (e) {
+      console.warn("Failed to connect to Shipping API in getAllShipments.", e);
+      return [];
+    }
+  }
+
   private async getMockShipment(orderId: string): Promise<Shipment> {
     await new Promise(resolve => setTimeout(resolve, 300));
     const lastChar = orderId.charAt(orderId.length - 1).toUpperCase();

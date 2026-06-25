@@ -71,6 +71,7 @@ export class OrderService {
       }
     }
 
+    let finalOrders = localOrders;
     try {
       // Pedimos las compras/órdenes al Seller App según se acordó
       const sellerOrders = await sellerApi.getOrdersByBuyer(userId);
@@ -129,13 +130,60 @@ export class OrderService {
             });
           }
         }
-        return merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        finalOrders = merged;
       }
     } catch (e) {
       console.warn("Error fetching or merging orders from Seller API:", e);
     }
 
-    return localOrders;
+    // Reconciliar con Shipping y Payments App para corregir estados de pago
+    try {
+      const { shippingApi } = await import("@/lib/api-clients/shipping");
+      const { paymentsApi } = await import("@/lib/api-clients/payments");
+
+      const shipments = await shippingApi.getAllShipments();
+      const charges = await paymentsApi.getUserCharges(userId);
+
+      for (const order of finalOrders) {
+        // Si ya está PAID, no hace falta validar nada
+        if (order.status === 'PAID') continue;
+
+        // 1. Validar si existe un envío en la App de Envios para este externalOrderId
+        const hasShipment = shipments.some((s: any) => s.orderId === order.externalOrderId);
+
+        // 2. Validar si existe un cobro aprobado en la App de Pagos
+        const orderTime = new Date(order.createdAt).getTime();
+        const hasApprovedCharge = charges.some((c: any) => {
+          const orderIdMatches = c.order_id === order.externalOrderId || c.orderId === order.externalOrderId;
+          const chargeAmount = parseFloat(c.amount);
+          const amountMatches = Math.abs(chargeAmount - order.totalAmount) < 0.01;
+          const chargeTime = new Date(c.created_at || c.createdAt).getTime();
+          const timeMatches = Math.abs(chargeTime - orderTime) < 15 * 60 * 1000; // 15 min window
+          
+          const statusUpper = (c.status || '').toUpperCase();
+          const isApproved = ['APPROVED', 'APROBADO', 'PAID', 'PAGADO'].includes(statusUpper);
+          
+          return (orderIdMatches || (amountMatches && timeMatches)) && isApproved;
+        });
+
+        // Si hay envío registrado o cobro aprobado, la orden está pagada
+        if (hasShipment || hasApprovedCharge) {
+          order.status = 'PAID';
+
+          // Actualizar base de datos local en segundo plano para persistirlo
+          if (isDbAvailable && typeof order.id === 'string' && !order.id.startsWith('mock_') && !order.id.startsWith('seller_')) {
+            prisma.orderShadow.update({
+              where: { id: order.id },
+              data: { status: 'PAID' },
+            }).catch(e => console.error("Error background updating order status to PAID:", e));
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to reconcile order statuses with Shipping/Payments:", err);
+    }
+
+    return finalOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
   async getOrderById(orderId: string) {
@@ -224,6 +272,44 @@ export class OrderService {
       }
     } catch (e) {
       console.warn("Failed to sync single order status from Seller API:", e);
+    }
+
+    // Sincronizar el estado con el Shipping/Payments App en tiempo real
+    try {
+      const { shippingApi } = await import("@/lib/api-clients/shipping");
+      const { paymentsApi } = await import("@/lib/api-clients/payments");
+
+      const shipment = await shippingApi.getShipmentByOrderId(order.externalOrderId);
+      
+      let hasApprovedCharge = false;
+      try {
+        const charges = await paymentsApi.getUserCharges(order.userId);
+        const orderTime = new Date(order.createdAt).getTime();
+        hasApprovedCharge = charges.some((c: any) => {
+          const orderIdMatches = c.order_id === order.externalOrderId || c.orderId === order.externalOrderId;
+          const chargeAmount = parseFloat(c.amount);
+          const amountMatches = Math.abs(chargeAmount - order.totalAmount) < 0.01;
+          const chargeTime = new Date(c.created_at || c.createdAt).getTime();
+          const timeMatches = Math.abs(chargeTime - orderTime) < 15 * 60 * 1000;
+          
+          const statusUpper = (c.status || '').toUpperCase();
+          const isApproved = ['APPROVED', 'APROBADO', 'PAID', 'PAGADO'].includes(statusUpper);
+          
+          return (orderIdMatches || (amountMatches && timeMatches)) && isApproved;
+        });
+      } catch (_) {}
+
+      if ((shipment || hasApprovedCharge) && order.status !== 'PAID' && order.status !== 'REJECTED') {
+        order.status = 'PAID';
+        if (isDbAvailable && !orderId.startsWith('mock_')) {
+          prisma.orderShadow.update({
+            where: { id: orderId },
+            data: { status: 'PAID' },
+          }).catch(e => console.error("Error background updating shadow order status to PAID from shipping:", e));
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to sync order status with Shipping/Payments in getOrderById:", e);
     }
 
     return order;
