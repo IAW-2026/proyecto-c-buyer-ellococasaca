@@ -35,7 +35,6 @@ describe("CartService", () => {
 
   beforeEach(() => {
     cartService = new CartService();
-    process.env.USE_MOCKS = "true"; // Asegurar que usamos mocks para los tests unitarios
   });
 
   it("should add an item to the cart with snapshotting", async () => {

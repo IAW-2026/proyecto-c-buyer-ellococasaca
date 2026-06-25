@@ -3,7 +3,7 @@
 import { cartService } from "@/services/cart.service";
 import { orderService } from "@/services/order.service";
 import { sellerApi } from "@/lib/api-clients/seller";
-import { paymentsApi } from "@/lib/api-clients/payments";
+import { paymentsApi, ChargeResponse } from "@/lib/api-clients/payments";
 import { revalidatePath } from "next/cache";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
@@ -17,13 +17,8 @@ export async function addToCartAction(productId: string, size?: string) {
     console.error("Auth error in addToCartAction:", error);
   }
 
-  // Bypass para Etapa 2 con mocks ("guest") si auth() falla o no devuelve userId.
   if (!userId) {
-     if (process.env.USE_MOCKS === "true") {
-       userId = "demo_user";
-     } else {
-       redirect("/sign-in");
-     }
+    redirect("/sign-in");
   }
 
   const product = await sellerApi.getProductById(productId);
@@ -61,6 +56,17 @@ export async function updateCartItemQuantityAction(itemId: string, productId: st
   revalidatePath("/cart");
 }
 
+function parseShippingAddress(addressStr: string) {
+  const parts = addressStr.split(/\s*,\s*/);
+  return {
+    street: parts[0] || addressStr || "Calle Sin Nombre 123",
+    city: parts[1] || "Bahia Blanca",
+    province: parts[2] || "Buenos Aires",
+    postalCode: parts[3] || "8000",
+    country: parts[4] || "Argentina",
+  };
+}
+
 export async function checkoutAction(formData: FormData) {
   let userId;
   try {
@@ -71,48 +77,114 @@ export async function checkoutAction(formData: FormData) {
   }
 
   if (!userId) {
-     if (process.env.USE_MOCKS === "true") {
-       userId = "demo_user";
-     } else {
-       throw new Error("Unauthorized");
-     }
+    throw new Error("Unauthorized");
   }
 
   const address = formData.get("address") as string;
   const paymentMethod = formData.get("payment") as string;
 
+  const parsedAddress = parseShippingAddress(address);
+
   const cart = await cartService.getCart(userId);
   if (!cart || cart.items.length === 0) throw new Error("Cart is empty");
 
-  const total = cart.items.reduce((sum, item) => sum + item.priceAtAdded * item.quantity, 0);
+  // Fetch product details to group items by sellerId
+  const itemsWithSellers = await Promise.all(
+    cart.items.map(async (item) => {
+      const product = await sellerApi.getProductById(item.productId);
+      if (!product) {
+        throw new Error(`Producto ${item.productName} no encontrado`);
+      }
+      return {
+        item,
+        sellerId: product.sellerId,
+      };
+    })
+  );
 
-  // 1. Crear Orden Shadow local vinculado al carrito actual
-  const order = await orderService.createOrder(userId, total, cart.id);
+  // Group by sellerId
+  const groupsBySeller: Record<string, typeof itemsWithSellers> = {};
+  for (const itemWithSeller of itemsWithSellers) {
+    const sId = itemWithSeller.sellerId;
+    if (!groupsBySeller[sId]) {
+      groupsBySeller[sId] = [];
+    }
+    groupsBySeller[sId].push(itemWithSeller);
+  }
 
-  // 2. Solicitar Pago a Payments App
-  const charge = await paymentsApi.createCharge({
-    orderId: order.externalOrderId,
-    userId,
-    amount: total,
-    description: `Compra en El Loco Casaca - ${cart.items.length} productos. Envío a: ${address}`,
-  });
+  const sellerIds = Object.keys(groupsBySeller);
+  const results: { order: any; charge: ChargeResponse }[] = [];
 
-  // 3. Si el pago es exitoso (o simulado), desactivar carrito
-  if (charge.status === 'APPROVED') {
+  for (const sellerId of sellerIds) {
+    const groupItems = groupsBySeller[sellerId];
+    const groupTotal = groupItems.reduce((sum, gi) => sum + gi.item.priceAtAdded * gi.item.quantity, 0);
+    const productIds = groupItems.map(gi => gi.item.productId);
+
+    // 1. Crear Orden Shadow local para este vendedor
+    const order = await orderService.createOrder(userId, groupTotal, cart.id);
+
+    // 2. Solicitar Pago a Payments App para este vendedor
+    try {
+      const charge = await paymentsApi.createCharge({
+        orderId: order.externalOrderId,
+        chargeId: `ch_${Math.random().toString(36).substring(7)}`,
+        buyerId: userId,
+        sellerId,
+        productIds,
+        shippingAddress: parsedAddress,
+        amount: groupTotal,
+        description: `Compra en El Loco Casaca - Vendedor: ${sellerId} - ${groupItems.length} productos. Envío a: ${address}`,
+      });
+      results.push({ order, charge });
+    } catch (error) {
+      console.error(`Failed to create charge for order ${order.externalOrderId}:`, error);
+      results.push({
+        order,
+        charge: { id: '', status: 'REJECTED', redirectUrl: undefined }
+      });
+    }
+  }
+
+  // 3. Actualizar estados de órdenes según resultados de cobros
+  let atLeastOneApproved = false;
+  let firstRedirectUrl: string | undefined = undefined;
+  let firstRejectedOrderId: string | undefined = undefined;
+
+  for (const res of results) {
+    const redirectUrl = res.charge.redirectUrl || res.charge.url;
+
+    if (res.charge.status === 'APPROVED') {
+      atLeastOneApproved = true;
+      await orderService.updateOrderStatus(res.order.id, 'PAID');
+    } else if (redirectUrl) {
+      // El cobro requiere redirección al gateway de pago (estado PENDING inicial se mantiene)
+      if (!firstRedirectUrl) {
+        const paymentsUrl = process.env.PAYMENTS_API_URL || "https://proyecto-c-payments2-ellococasaca.vercel.app";
+        firstRedirectUrl = redirectUrl.startsWith('http') ? redirectUrl : `${paymentsUrl}${redirectUrl}`;
+      }
+    } else {
+      await orderService.updateOrderStatus(res.order.id, 'REJECTED');
+      if (!firstRejectedOrderId) {
+        firstRejectedOrderId = res.order.externalOrderId;
+      }
+    }
+  }
+
+  // 4. Si al menos un pago fue aprobado (o redirigido exitosamente), desactivar carrito
+  if (atLeastOneApproved || firstRedirectUrl) {
     await cartService.deactivateCart(cart.id);
-    await orderService.updateOrderStatus(order.id, 'PAID');
-  } else {
-    await orderService.updateOrderStatus(order.id, 'REJECTED');
-    // Si el pago es rechazado, redirigimos a una página de error o de vuelta al carrito con mensaje
-    redirect(`/cart?error=payment_rejected&orderId=${order.externalOrderId}`);
+  }
+
+  if (firstRedirectUrl) {
+    redirect(`/checkout/redirect?url=${encodeURIComponent(firstRedirectUrl)}`);
   }
 
   revalidatePath("/", "layout");
   revalidatePath("/orders");
 
-  if (charge.redirectUrl) {
-    redirect(charge.redirectUrl);
-  } else {
+  if (atLeastOneApproved) {
     redirect("/orders");
+  } else {
+    redirect(`/cart?error=payment_rejected&orderId=${firstRejectedOrderId || 'unknown'}`);
   }
 }

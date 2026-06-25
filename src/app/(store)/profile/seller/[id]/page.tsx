@@ -122,7 +122,7 @@ export default async function SellerProfilePage({ params }: SellerProfilePagePro
                       {[...Array(5)].map((_, i) => (
                         <Star 
                           key={i} 
-                          className={`w-3 h-3 ${i < review.ratingSeller ? 'text-yellow-400 fill-current' : 'text-gray-200'}`} 
+                          className={`w-3 h-3 ${i < review.ratingProduct ? 'text-yellow-400 fill-current' : 'text-gray-200'}`} 
                         />
                       ))}
                     </div>

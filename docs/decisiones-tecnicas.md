@@ -37,3 +37,27 @@ Se implementó la tabla `OrderShadow` en la base de datos de la Buyer App. Esta 
 - **Por qué:** Permite que la Buyer App muestre un historial de pedidos rápido sin depender exclusivamente de llamadas a la API de Payments/Shipping para el listado básico.
 - **Sincronización:** El estado inicial es `PENDING`. Se actualiza a `APPROVED` solo tras la confirmación de la Payments App. La Buyer App no es el dueño de la transacción financiera, pero sí del historial de navegación y compra del usuario.
 - **Impacto:** Facilita la auditoría local y mejora la performance de la página `/orders`.
+
+## ADR 012: Resolución de Discrepancias de Rutas de Integración (Etapa 3)
+Al iniciar la integración con los repositorios reales de los demás servicios, se detectaron discrepancias entre las rutas originalmente planeadas y los contratos finales definidos por cada equipo.
+* **Decisión para Feedback App:** Se acopló el cliente `FeedbackApiClient` con el contrato definitivo detallado en [jere-api-plan.md](file:///home/md/Escritorio/1ercuatri/iaw/proyecto-c-buyer-ellococasaca/docs/jere-api-plan.md). Las consultas de listado se realizan a `/api/reviews/product/:productId` y `/api/reviews/seller/:sellerId` con soporte para paginación (`?limit=100`). En el payload de creación de reseña, se adaptó el mapeo de campos locales (`ratingProduct` / `ratingSeller`) a los parámetros requeridos por la API (`productRating` / `sellerRating`).
+* **Decisión para Shipping App:** El equipo de Shipping App implementó el endpoint `/api/shipments/order/[orderId]`. Consecuentemente, se procedió a la remoción completa de los mocks locales y su respectiva variable en la Buyer App, permitiendo la comunicación directa.
+* **Impacto:** Conexión 100% directa y real con todos los microservicios externos (Seller, Payments, Feedback y Shipping) sin mocks activos, normalizando la interfaz de datos en el cliente local de la API de Feedback.
+
+## ADR 013: División de Órdenes y Pagos por Vendedor (Checkout Multivendedor)
+Para soportar carritos con productos de distintos vendedores sin concentrar los cobros o pedidos en un único vendedor de manera errónea:
+- **Decisión:** En el momento de iniciar el checkout, los ítems del carrito son agrupados por su `sellerId`. Por cada vendedor se crea un `OrderShadow` independiente y se solicita el cobro correspondiente a la `Payments App` enviando el `sellerId` en la solicitud de cargo.
+- **Impacto:** Permite acreditar los fondos correspondientes a cada vendedor y asegura que cada uno reciba únicamente sus órdenes específicas.
+
+## ADR 014: Remoción de Entrada de Calificación del Vendedor (Feedback Inferido)
+Se eliminó la opción para que el comprador califique manualmente al vendedor durante la creación de reseñas:
+- **Decisión:** La `Feedback App` deduce automáticamente la reputación del vendedor a partir de las calificaciones de sus productos. Por lo tanto, el formulario de opiniones se simplificó eliminando el campo de calificación del vendedor, enviando en su lugar la puntuación del producto como valor referencial seguro en el payload de creación.
+- **Impacto:** Interfaz de usuario más fluida y consistencia con la lógica inferida del servicio de reseñas.
+
+## ADR 015: Consulta Resiliente de Órdenes al Seller App
+Siguiendo los acuerdos de integración, las compras del buyer deben ser expuestas por el Seller App:
+- **Decisión:** Al ingresar a `/orders`, la Buyer App solicita las órdenes correspondientes al usuario en el Seller App. Adicionalmente, el servicio realiza una mezcla resiliente combinando y ordenando cronológicamente estas órdenes con los datos locales persistidos en la tabla `OrderShadow`.
+- **Impacto:** Si la Seller App está inactiva o no posee ciertos registros, el usuario no perderá su historial local gracias al respaldo de `OrderShadow`.
+
+
+

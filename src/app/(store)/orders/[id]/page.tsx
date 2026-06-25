@@ -28,7 +28,7 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
   }
 
   const cart = (order as any).cartId ? await cartService.getCartById((order as any).cartId) : null;
-  const shipment = await shippingApi.getShipmentByOrderId(order.id);
+  const shipment = await shippingApi.getShipmentByOrderId(order.externalOrderId);
 
   const steps = [
     { label: 'Procesando', status: 'PENDING', icon: Package, done: true },

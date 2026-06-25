@@ -13,10 +13,6 @@ export async function GET() {
     console.error("Auth error in /api/cart/count:", error);
   }
 
-  if (!userId && process.env.USE_MOCKS === "true") {
-    userId = "demo_user";
-  }
-
   if (!userId) {
     return NextResponse.json({ count: 0 });
   }

@@ -1,8 +1,5 @@
 import { sellerApi } from "@/lib/api-clients/seller";
 import { feedbackApi } from "@/lib/api-clients/feedback";
-import { shippingApi } from "@/lib/api-clients/shipping";
-import { orderService } from "@/services/order.service";
-import { cartService } from "@/services/cart.service";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, ShieldCheck, Star, MessageSquare, Send } from "lucide-react";
@@ -39,23 +36,16 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
   const seller = await sellerApi.getSellerById(product.sellerId);
 
   // Chequeo de producto entregado para habilitar reseña
-  let hasDeliveredOrder = false;
+  let canReview = false;
+  let currentOrderId = searchParams.orderId || "mock_order_123";
+
   if (userId) {
-    const userOrders = await orderService.getOrdersByUser(userId);
-    for (const order of userOrders) {
-      const shipment = await shippingApi.getShipmentByOrderId(order.id);
-      if (shipment?.status === 'DELIVERED') {
-        const cart = (order as any).cartId ? await cartService.getCartById((order as any).cartId) : null;
-        if (cart?.items.some(i => i.productId === params.id)) {
-          hasDeliveredOrder = true;
-          break;
-        }
-      }
+    const eligibility = await feedbackApi.checkReviewEligibility(params.id);
+    canReview = eligibility.canReview;
+    if (eligibility.orderId) {
+      currentOrderId = eligibility.orderId;
     }
   }
-
-  const canReview = userId && hasDeliveredOrder && reviews.every(r => r.buyerId !== userId); 
-  const currentOrderId = searchParams.orderId || "mock_order_123";
 
   const leagueName = product.leagueId ? getLeagueById(product.leagueId)?.name : undefined;
   const teamName = product.teamId ? getTeamById(product.teamId)?.team.name ?? product.team : product.team;
@@ -223,12 +213,6 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
                     </select>
                   </div>
 
-                  <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest opacity-70">Puntaje Vendedor</label>
-                    <select name="ratingSeller" className="w-full bg-blue-700 border-none rounded-xl mt-1 font-bold">
-                      {[5,4,3,2,1].map(n => <option key={n} value={n}>{n} Estrellas</option>)}
-                    </select>
-                  </div>
 
                   <div>
                     <label className="text-[10px] font-black uppercase tracking-widest opacity-70">Comentario</label>
@@ -272,11 +256,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
                           {new Date(review.createdAt).toLocaleDateString('es-AR')}
                         </span>
                       </div>
-                      <div className="bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
-                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                          Vendedor: {review.ratingSeller}/5
-                        </span>
-                      </div>
+
                     </div>
                   </div>
                 </div>

@@ -12,7 +12,6 @@ export async function submitReviewAction(formData: FormData) {
   const orderId = formData.get("orderId") as string;
   const sellerId = formData.get("sellerId") as string;
   const ratingProduct = parseInt(formData.get("ratingProduct") as string);
-  const ratingSeller = parseInt(formData.get("ratingSeller") as string);
   const comment = formData.get("comment") as string;
 
   await feedbackApi.createReview({
@@ -21,7 +20,7 @@ export async function submitReviewAction(formData: FormData) {
     buyerId: userId,
     sellerId,
     ratingProduct,
-    ratingSeller,
+    ratingSeller: ratingProduct, // Fallback as feedback app infers it from product rating
     comment,
   });
 

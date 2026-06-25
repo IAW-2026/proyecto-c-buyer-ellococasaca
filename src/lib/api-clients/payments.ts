@@ -1,55 +1,86 @@
+import { auth } from "@clerk/nextjs/server";
+
+export type ShippingAddress = {
+  street: string;
+  city: string;
+  province: string;
+  postalCode: string;
+  country: string;
+};
+
 export type ChargeRequest = {
   orderId: string;
-  userId: string;
-  amount: number;
-  description: string;
+  chargeId?: string;
+  buyerId: string;
+  sellerId: string;
+  productIds: string[];
+  shippingAddress: ShippingAddress;
+  amount?: number;
+  description?: string;
 };
 
 export type ChargeResponse = {
-  id: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  id?: string;
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED';
   redirectUrl?: string;
+  url?: string;
 };
 
 export class PaymentsApiClient {
-  private useMocks: boolean;
   private baseUrl: string;
 
   constructor() {
-    this.useMocks = process.env.USE_MOCKS === "true";
     this.baseUrl = process.env.PAYMENTS_API_URL || "http://localhost:3002";
   }
 
   async createCharge(request: ChargeRequest): Promise<ChargeResponse> {
-    if (this.useMocks) {
-      // Simular latencia
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Simulación de rechazo si el monto es exactamente 666
-      if (request.amount === 666) {
-        return {
-          id: `ch_${Math.random().toString(36).substring(7)}`,
-          status: 'REJECTED',
-        };
-      }
-
-      // Mock response exitosa
-      return {
-        id: `ch_${Math.random().toString(36).substring(7)}`,
-        status: 'APPROVED',
-        redirectUrl: `/orders/success?orderId=${request.orderId}`
-      };
+    let token = null;
+    try {
+      token = await auth().getToken();
+    } catch (e) {
+      console.warn("Failed to get Clerk token inside PaymentsApiClient.createCharge:", e);
     }
 
-    const response = await fetch(`${this.baseUrl}/api/charges`, {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const payload = {
+      order_id: request.orderId,
+      charge_id: request.chargeId,
+      buyer_id: request.buyerId,
+      seller_id: request.sellerId,
+      product_ids: request.productIds,
+      products_id: request.productIds,
+      shipping_address: request.shippingAddress,
+      amount: request.amount,
+      description: request.description,
+    };
+
+    console.log("Payments API request payload:", JSON.stringify(payload, null, 2));
+    const response = await fetch(`${this.baseUrl}/api/charge`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(request),
+      headers,
+      body: JSON.stringify(payload),
     });
 
-    if (!response.ok) throw new Error('Payments API error');
-    return response.json();
+    if (!response.ok) {
+      let bodyText = "";
+      try {
+        bodyText = await response.text();
+      } catch (_) {}
+      console.error(`Payments API error: status=${response.status}, body=${bodyText}`);
+      throw new Error(`Payments API error: ${response.status} - ${bodyText}`);
+    }
+    const data = await response.json();
+    console.log("Payments API response:", JSON.stringify(data, null, 2));
+    return data;
   }
 }
 
 export const paymentsApi = new PaymentsApiClient();
+

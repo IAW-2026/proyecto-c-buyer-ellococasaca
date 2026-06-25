@@ -1,3 +1,5 @@
+import { auth } from "@clerk/nextjs/server";
+
 export type Review = {
   id: string;
   orderId: string;
@@ -16,154 +18,181 @@ export type RatingsCache = {
   totalReviews: number;
 };
 
-// Singleton pattern for the mock store to survive HMR in Next.js development
-declare global {
-  var __mock_reviews_store: Map<string, Review[]> | undefined;
-}
-
-const mockReviewsStore = globalThis.__mock_reviews_store ?? new Map<string, Review[]>();
-
-if (process.env.NODE_ENV !== "production") {
-  globalThis.__mock_reviews_store = mockReviewsStore;
-}
-
-// Initialize with some static data only if empty
-if (mockReviewsStore.size === 0) {
-  mockReviewsStore.set("1", [
-    {
-      id: "rev_1",
-      orderId: "ORD-DEMO1",
-      buyerId: "user_1",
-      sellerId: "user_1",
-      productId: "1",
-      ratingProduct: 5,
-      ratingSeller: 5,
-      comment: "Excelente calidad, muy conforme.",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "rev_2",
-      orderId: "ORD-DEMO2",
-      buyerId: "user_2",
-      sellerId: "user_1",
-      productId: "1",
-      ratingProduct: 4,
-      ratingSeller: 5,
-      comment: "Llegó un poco tarde pero la camiseta está genial.",
-      createdAt: new Date().toISOString(),
-    }
-  ]);
-  
-  // Agregar algunas para otros productos para que no se vea vacío
-  mockReviewsStore.set("2", [
-    {
-      id: "rev_3",
-      orderId: "ORD-DEMO3",
-      buyerId: "user_3",
-      sellerId: "user_1",
-      productId: "2",
-      ratingProduct: 5,
-      ratingSeller: 5,
-      comment: "Talle perfecto, tal cual la descripción.",
-      createdAt: new Date().toISOString(),
-    }
-  ]);
-}
-
 export class FeedbackApiClient {
-  private useMocks: boolean;
   private baseUrl: string;
 
   constructor() {
-    this.useMocks = process.env.USE_MOCKS === "true";
     this.baseUrl = process.env.FEEDBACK_API_URL || "http://localhost:3004";
   }
 
   async getProductReviews(productId: string): Promise<Review[]> {
-    if (this.useMocks) {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      return mockReviewsStore.get(productId) || [];
+    try {
+      const response = await fetch(`${this.baseUrl}/api/reviews/product/${productId}?limit=100`, { next: { revalidate: 0 } });
+      if (!response.ok) return [];
+      
+      const data = await response.json();
+      const reviewsList = Array.isArray(data) ? data : (data.reviews || []);
+      
+      return reviewsList.map((r: any) => ({
+        id: r.reviewId || r.id || '',
+        orderId: r.orderId || '',
+        buyerId: r.buyerId || '',
+        sellerId: r.sellerId || '',
+        productId: r.productId || productId,
+        ratingProduct: typeof r.rating === 'number' ? r.rating : (typeof r.productRating === 'number' ? r.productRating : (r.ratingProduct || 5)),
+        ratingSeller: typeof r.sellerRating === 'number' ? r.sellerRating : (typeof r.ratingSeller === 'number' ? r.ratingSeller : 5),
+        comment: r.comment || '',
+        createdAt: r.createdAt || new Date().toISOString(),
+      }));
+    } catch (e) {
+      console.warn(`Failed to fetch product reviews for ${productId}:`, e);
+      return [];
     }
-
-    const response = await fetch(`${this.baseUrl}/api/reviews/product/${productId}`);
-    if (!response.ok) return [];
-    return response.json();
   }
 
   async getProductRating(productId: string): Promise<RatingsCache | null> {
-    if (this.useMocks) {
-      const reviews = mockReviewsStore.get(productId) || [];
-      if (reviews.length === 0) return { targetId: productId, averageRating: 0, totalReviews: 0 };
+    try {
+      const response = await fetch(`${this.baseUrl}/api/product-ratings/${productId}`, { next: { revalidate: 0 } });
+      if (!response.ok) return null;
       
-      const avg = reviews.reduce((sum, r) => sum + r.ratingProduct, 0) / reviews.length;
+      const data = await response.json();
       return {
         targetId: productId,
-        averageRating: Number(avg.toFixed(1)),
-        totalReviews: reviews.length,
+        averageRating: typeof data.averageRating === 'number' ? data.averageRating : (data.rating || 0),
+        totalReviews: typeof data.totalReviews === 'number' ? data.totalReviews : (data.count || 0),
       };
+    } catch (e) {
+      console.warn(`Failed to fetch product rating for ${productId}:`, e);
+      return null;
     }
-
-    const response = await fetch(`${this.baseUrl}/api/ratings/${productId}`);
-    if (!response.ok) return null;
-    return response.json();
   }
 
   async getSellerReviews(sellerId: string): Promise<Review[]> {
-    if (this.useMocks) {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      const allReviews = Array.from(mockReviewsStore.values()).flat();
-      return allReviews.filter(r => r.sellerId === sellerId);
+    try {
+      const response = await fetch(`${this.baseUrl}/api/reviews/seller/${sellerId}?limit=100`, { next: { revalidate: 0 } });
+      if (!response.ok) return [];
+      
+      const data = await response.json();
+      const reviewsList = Array.isArray(data) ? data : (data.reviews || []);
+      
+      return reviewsList.map((r: any) => ({
+        id: r.reviewId || r.id || '',
+        orderId: r.orderId || '',
+        buyerId: r.buyerId || '',
+        sellerId: r.sellerId || sellerId,
+        productId: r.productId || '',
+        ratingProduct: typeof r.ratingProduct === 'number' ? r.ratingProduct : (typeof r.rating === 'number' ? r.rating : 5),
+        ratingSeller: typeof r.sellerRating === 'number' ? r.sellerRating : (typeof r.ratingSeller === 'number' ? r.ratingSeller : 5),
+        comment: r.comment || '',
+        createdAt: r.createdAt || new Date().toISOString(),
+      }));
+    } catch (e) {
+      console.warn(`Failed to fetch seller reviews for ${sellerId}:`, e);
+      return [];
     }
-
-    const response = await fetch(`${this.baseUrl}/api/reviews/seller/${sellerId}`);
-    if (!response.ok) return [];
-    return response.json();
   }
 
   async getSellerRating(sellerId: string): Promise<RatingsCache | null> {
-    if (this.useMocks) {
-      const allReviews = Array.from(mockReviewsStore.values()).flat().filter(r => r.sellerId === sellerId);
-      if (allReviews.length === 0) return { targetId: sellerId, averageRating: 5, totalReviews: 10 };
+    try {
+      const response = await fetch(`${this.baseUrl}/api/seller-ratings/${sellerId}`, { next: { revalidate: 0 } });
+      if (!response.ok) return null;
       
-      const avg = allReviews.reduce((sum, r) => sum + r.ratingSeller, 0) / allReviews.length;
+      const data = await response.json();
       return {
         targetId: sellerId,
-        averageRating: Number(avg.toFixed(1)),
-        totalReviews: 120 + allReviews.length,
+        averageRating: typeof data.averageRating === 'number' ? data.averageRating : (data.rating || 0),
+        totalReviews: typeof data.totalReviews === 'number' ? data.totalReviews : (data.count || 0),
       };
+    } catch (e) {
+      console.warn(`Failed to fetch seller rating for ${sellerId}:`, e);
+      return null;
     }
-
-    const response = await fetch(`${this.baseUrl}/api/ratings/seller/${sellerId}`);
-    if (!response.ok) return null;
-    return response.json();
   }
 
   async createReview(review: Omit<Review, 'id' | 'createdAt'>): Promise<Review> {
-    if (this.useMocks) {
-      const newReview: Review = {
-        ...review,
-        id: `rev_${Math.random().toString(36).substring(7)}`,
-        createdAt: new Date().toISOString(),
-      };
-      
-      const current = mockReviewsStore.get(review.productId) || [];
-      // Evitar duplicados si por algún motivo se dispara la acción varias veces en el mismo tick
-      if (!current.some(r => r.comment === review.comment && r.buyerId === review.buyerId)) {
-        mockReviewsStore.set(review.productId, [newReview, ...current]);
-      }
-      
-      return newReview;
+    let token = null;
+    try {
+      token = await auth().getToken();
+    } catch (e) {
+      console.warn("Failed to get Clerk token inside createReview:", e);
     }
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const payload = {
+      buyerId: review.buyerId,
+      orderId: review.orderId,
+      productId: review.productId,
+      sellerId: review.sellerId,
+      productRating: review.ratingProduct,
+      sellerRating: review.ratingSeller,
+      comment: review.comment,
+    };
 
     const response = await fetch(`${this.baseUrl}/api/reviews`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(review),
+      headers,
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) throw new Error('Feedback API error');
-    return response.json();
+    
+    const data = await response.json();
+    return {
+      id: data.id || data.reviewId || `rev_${Math.random().toString(36).substring(7)}`,
+      orderId: review.orderId,
+      buyerId: review.buyerId,
+      sellerId: review.sellerId,
+      productId: review.productId,
+      ratingProduct: review.ratingProduct,
+      ratingSeller: review.ratingSeller,
+      comment: review.comment,
+      createdAt: data.createdAt || new Date().toISOString(),
+    };
+  }
+
+  async checkReviewEligibility(productId: string): Promise<{ canReview: boolean; orderId?: string }> {
+    let token = null;
+    try {
+      token = await auth().getToken();
+    } catch (e) {
+      console.warn("Failed to get Clerk token inside checkReviewEligibility:", e);
+    }
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/api/buyer/purchases/eligible/${productId}`, {
+        headers,
+        next: { revalidate: 0 }
+      });
+      if (!response.ok) return { canReview: false };
+      const data = await response.json();
+      
+      const eligibleOrder = data.orders?.find((o: any) => o.canReview);
+      return {
+        canReview: !!data.canReview,
+        orderId: eligibleOrder?.orderId || undefined
+      };
+    } catch (e) {
+      console.warn(`Failed to check review eligibility for product ${productId}:`, e);
+      return { canReview: false };
+    }
   }
 }
 
 export const feedbackApi = new FeedbackApiClient();
+
+

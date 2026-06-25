@@ -6,6 +6,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'placehold.co',
       },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+      },
     ],
     dangerouslyAllowSVG: true,
     formats: ['image/avif', 'image/webp'],
