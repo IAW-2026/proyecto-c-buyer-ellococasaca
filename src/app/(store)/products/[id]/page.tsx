@@ -15,6 +15,7 @@ interface ProductPageProps {
   };
   searchParams: {
     orderId?: string;
+    error?: string;
   };
 }
 
@@ -195,6 +196,17 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
               Opiniones de otros <span className="text-blue-600">Casacas</span>
             </h2>
           </div>
+
+          {searchParams.error && (
+            <div className="bg-red-50 border border-red-200 text-red-800 px-6 py-4 rounded-2xl mb-8 flex items-center gap-3 font-semibold text-sm">
+              <span>⚠️ No se pudo enviar la opinión:</span>
+              <span className="font-normal">
+                {searchParams.error === 'feedback_api_error' 
+                  ? 'Hubo un problema de conexión con el servicio de opiniones. Por favor, reintente más tarde o comprueba si ya has calificado este pedido.' 
+                  : decodeURIComponent(searchParams.error)}
+              </span>
+            </div>
+          )}
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {/* Formulario de Reseña (Si puede reseñar) */}
