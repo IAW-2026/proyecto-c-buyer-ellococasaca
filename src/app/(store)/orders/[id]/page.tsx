@@ -29,9 +29,14 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
   }
 
   const cart = (order as any).cartId ? await cartService.getCartById((order as any).cartId) : null;
-  const shipment = order.trackingId 
-    ? await shippingApi.getShipmentById(order.trackingId) 
-    : await shippingApi.getShipmentByOrderId(order.externalOrderId);
+  
+  let shipment = null;
+  if (order.trackingId) {
+    shipment = await shippingApi.getShipmentById(order.trackingId);
+  }
+  if (!shipment) {
+    shipment = await shippingApi.getShipmentByOrderId(order.externalOrderId);
+  }
 
   // Reconciliar con la App de Pagos para obtener la dirección de envío real
   let shippingAddress = null;

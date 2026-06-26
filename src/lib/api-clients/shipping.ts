@@ -70,31 +70,36 @@ export class ShippingApiClient {
     }
 
     try {
-      const response = await fetch(`${this.baseUrl}/api/shipments/${shipmentId}/tracking`, { next: { revalidate: 0 } });
-      if (!response.ok) {
-        console.warn(`Shipping API GET /api/shipments/${shipmentId}/tracking returned ${response.status}.`);
-        return null;
-      }
-      
-      const data = await response.json();
-      
+      let resolvedId = shipmentId;
       let trackingCode = `TRK-${shipmentId.substring(0, 8).toUpperCase()}`;
+      
       try {
         const listRes = await fetch(`${this.baseUrl}/api/shipments?limit=100`, { next: { revalidate: 0 } });
         if (listRes.ok) {
           const listData = await listRes.json();
           const shipments = listData.data || [];
-          const found = shipments.find((s: any) => s.id === shipmentId);
-          if (found && found.trackingCode) {
-            trackingCode = found.trackingCode;
+          const found = shipments.find((s: any) => s.id === shipmentId || s.trackingCode === shipmentId);
+          if (found) {
+            resolvedId = found.id;
+            if (found.trackingCode) {
+              trackingCode = found.trackingCode;
+            }
           }
         }
       } catch (listErr) {
         console.warn("Failed to fetch all shipments list for trackingCode fallback:", listErr);
       }
 
+      const response = await fetch(`${this.baseUrl}/api/shipments/${resolvedId}/tracking`, { next: { revalidate: 0 } });
+      if (!response.ok) {
+        console.warn(`Shipping API GET /api/shipments/${resolvedId}/tracking returned ${response.status}.`);
+        return null;
+      }
+      
+      const data = await response.json();
+
       return {
-        id: data.shipmentId || shipmentId,
+        id: data.shipmentId || resolvedId,
         orderId: data.orderId,
         buyerId: data.buyerId || "",
         sellerId: data.sellerId || "",
