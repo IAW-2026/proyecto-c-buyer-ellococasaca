@@ -64,6 +64,51 @@ export class ShippingApiClient {
     }
   }
 
+  async getShipmentById(shipmentId: string): Promise<Shipment | null> {
+    if (this.useMocks) {
+      return this.getMockShipment(shipmentId);
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/api/shipments/${shipmentId}/tracking`, { next: { revalidate: 0 } });
+      if (!response.ok) {
+        console.warn(`Shipping API GET /api/shipments/${shipmentId}/tracking returned ${response.status}.`);
+        return null;
+      }
+      
+      const data = await response.json();
+      
+      let trackingCode = `TRK-${shipmentId.substring(0, 8).toUpperCase()}`;
+      try {
+        const listRes = await fetch(`${this.baseUrl}/api/shipments?limit=100`, { next: { revalidate: 0 } });
+        if (listRes.ok) {
+          const listData = await listRes.json();
+          const shipments = listData.data || [];
+          const found = shipments.find((s: any) => s.id === shipmentId);
+          if (found && found.trackingCode) {
+            trackingCode = found.trackingCode;
+          }
+        }
+      } catch (listErr) {
+        console.warn("Failed to fetch all shipments list for trackingCode fallback:", listErr);
+      }
+
+      return {
+        id: data.shipmentId || shipmentId,
+        orderId: data.orderId,
+        buyerId: data.buyerId || "",
+        sellerId: data.sellerId || "",
+        status: data.currentStatus || 'PREPARING',
+        trackingCode: trackingCode,
+        addressSnapshot: data.addressSnapshot || null,
+        history: data.history || [],
+      } as any;
+    } catch (e) {
+      console.warn("Failed to connect to Shipping API in getShipmentById.", e);
+      return null;
+    }
+  }
+
   private async getMockShipment(orderId: string): Promise<Shipment> {
     await new Promise(resolve => setTimeout(resolve, 300));
     const lastChar = orderId.charAt(orderId.length - 1).toUpperCase();

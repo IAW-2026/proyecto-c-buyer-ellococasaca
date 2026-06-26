@@ -279,7 +279,9 @@ export class OrderService {
       const { shippingApi } = await import("@/lib/api-clients/shipping");
       const { paymentsApi } = await import("@/lib/api-clients/payments");
 
-      const shipment = await shippingApi.getShipmentByOrderId(order.externalOrderId);
+      const shipment = order.trackingId 
+        ? await shippingApi.getShipmentById(order.trackingId) 
+        : await shippingApi.getShipmentByOrderId(order.externalOrderId);
       
       let hasApprovedCharge = false;
       try {
