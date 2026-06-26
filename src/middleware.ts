@@ -54,7 +54,7 @@ export default clerkMiddleware(async (auth, req) => {
     const isSeller = roles.includes("seller");
     const isAdmin = roles.includes("admin");
     const isModerator = roles.includes("moderator");
-    const isShipping = roles.includes("shipping");
+    const isCourier = roles.includes("courier");
     const isBuyer = roles.includes("buyer") || roles.length === 0; // Por defecto es buyer si no tiene rol
 
     // 1. Redirecciones basadas en rol (Proxy) - Solo para navegación de páginas, no APIs
@@ -87,12 +87,12 @@ export default clerkMiddleware(async (auth, req) => {
         return NextResponse.redirect(redirectUrl);
       }
 
-      if (isShipping) {
-        const shippingUrl = process.env.SHIPPING_APP_URL || process.env.SHIPPING_API_URL || "https://proyecto-c-shipping2-ellococasaca.vercel.app";
-        console.log(`[Middleware Redirect] Redirecting shipping to intermediary page`);
+      if (isCourier) {
+        const courierUrl = "https://proyecto-c-shipping2-ellococasaca.vercel.app/repartidor";
+        console.log(`[Middleware Redirect] Redirecting courier to intermediary page`);
         const redirectUrl = new URL(`/redirecting`, req.url);
-        redirectUrl.searchParams.set("role", "shipping");
-        redirectUrl.searchParams.set("to", shippingUrl);
+        redirectUrl.searchParams.set("role", "courier");
+        redirectUrl.searchParams.set("to", courierUrl);
         return NextResponse.redirect(redirectUrl);
       }
     }
