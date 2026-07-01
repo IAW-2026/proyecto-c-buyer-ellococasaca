@@ -5,8 +5,6 @@ import Link from "next/link";
 import { ChevronLeft, Star, ShieldCheck, User, MessageSquare, ShoppingBag } from "lucide-react";
 import { ProductCard } from "@/components/products/ProductCard";
 
-export const dynamic = "force-dynamic";
-
 interface SellerProfilePageProps {
   params: {
     id: string;
