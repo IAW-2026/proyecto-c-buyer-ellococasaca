@@ -27,7 +27,15 @@ export class FeedbackApiClient {
 
   async getProductReviews(productId: string): Promise<Review[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/reviews/product/${productId}?limit=100`, { next: { revalidate: 0 } });
+      const headers: Record<string, string> = {};
+      if (process.env.INTER_SERVICE_SECRET) {
+        headers["x-inter-service-secret"] = process.env.INTER_SERVICE_SECRET;
+      }
+
+      const response = await fetch(`${this.baseUrl}/api/reviews/product/${productId}?limit=100`, { 
+        headers,
+        next: { revalidate: 0 } 
+      });
       if (!response.ok) return [];
       
       const data = await response.json();
@@ -52,7 +60,15 @@ export class FeedbackApiClient {
 
   async getProductRating(productId: string): Promise<RatingsCache | null> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/product-ratings/${productId}`, { next: { revalidate: 0 } });
+      const headers: Record<string, string> = {};
+      if (process.env.INTER_SERVICE_SECRET) {
+        headers["x-inter-service-secret"] = process.env.INTER_SERVICE_SECRET;
+      }
+
+      const response = await fetch(`${this.baseUrl}/api/product-ratings/${productId}`, { 
+        headers,
+        next: { revalidate: 0 } 
+      });
       if (!response.ok) return null;
       
       const data = await response.json();
@@ -69,7 +85,15 @@ export class FeedbackApiClient {
 
   async getSellerReviews(sellerId: string): Promise<Review[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/reviews/seller/${sellerId}?limit=100`, { next: { revalidate: 0 } });
+      const headers: Record<string, string> = {};
+      if (process.env.INTER_SERVICE_SECRET) {
+        headers["x-inter-service-secret"] = process.env.INTER_SERVICE_SECRET;
+      }
+
+      const response = await fetch(`${this.baseUrl}/api/reviews/seller/${sellerId}?limit=100`, { 
+        headers,
+        next: { revalidate: 0 } 
+      });
       if (!response.ok) return [];
       
       const data = await response.json();
@@ -94,7 +118,15 @@ export class FeedbackApiClient {
 
   async getSellerRating(sellerId: string): Promise<RatingsCache | null> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/seller-ratings/${sellerId}`, { next: { revalidate: 0 } });
+      const headers: Record<string, string> = {};
+      if (process.env.INTER_SERVICE_SECRET) {
+        headers["x-inter-service-secret"] = process.env.INTER_SERVICE_SECRET;
+      }
+
+      const response = await fetch(`${this.baseUrl}/api/seller-ratings/${sellerId}`, { 
+        headers,
+        next: { revalidate: 0 } 
+      });
       if (!response.ok) return null;
       
       const data = await response.json();
@@ -125,6 +157,10 @@ export class FeedbackApiClient {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
+    if (process.env.INTER_SERVICE_SECRET) {
+      headers['x-inter-service-secret'] = process.env.INTER_SERVICE_SECRET;
+    }
+
     const payload = {
       buyerId: review.buyerId,
       orderId: review.orderId,
@@ -141,7 +177,19 @@ export class FeedbackApiClient {
       body: JSON.stringify(payload),
     });
 
-    if (!response.ok) throw new Error('Feedback API error');
+    if (!response.ok) {
+      let errorMessage = 'Feedback API error';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorData.message || errorData.msg || errorMessage;
+      } catch (_) {
+        try {
+          const errorText = await response.text();
+          if (errorText) errorMessage = errorText;
+        } catch (_) {}
+      }
+      throw new Error(errorMessage);
+    }
     
     const data = await response.json();
     return {
@@ -171,6 +219,10 @@ export class FeedbackApiClient {
 
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    if (process.env.INTER_SERVICE_SECRET) {
+      headers['x-inter-service-secret'] = process.env.INTER_SERVICE_SECRET;
     }
 
     try {

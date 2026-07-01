@@ -38,7 +38,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
 
   // Chequeo de producto entregado para habilitar reseña
   let canReview = false;
-  let currentOrderId = searchParams.orderId || "mock_order_123";
+  let currentOrderId = searchParams.orderId || "";
 
   if (userId) {
     const eligibility = await feedbackApi.checkReviewEligibility(params.id);

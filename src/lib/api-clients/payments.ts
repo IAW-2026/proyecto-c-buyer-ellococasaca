@@ -50,6 +50,10 @@ export class PaymentsApiClient {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
+    if (process.env.INTER_SERVICE_SECRET) {
+      headers['x-inter-service-secret'] = process.env.INTER_SERVICE_SECRET;
+    }
+
     const payload = {
       order_id: request.orderId,
       charge_id: request.chargeId,
@@ -97,6 +101,10 @@ export class PaymentsApiClient {
 
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    if (process.env.INTER_SERVICE_SECRET) {
+      headers['x-inter-service-secret'] = process.env.INTER_SERVICE_SECRET;
     }
 
     try {

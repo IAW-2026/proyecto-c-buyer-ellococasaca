@@ -15,7 +15,7 @@ export async function submitReviewAction(formData: FormData) {
   const ratingProduct = parseInt(formData.get("ratingProduct") as string);
   const comment = formData.get("comment") as string;
 
-  let isError = false;
+  let errorMessage: string | null = null;
   try {
     await feedbackApi.createReview({
       productId,
@@ -28,11 +28,11 @@ export async function submitReviewAction(formData: FormData) {
     });
   } catch (error: any) {
     console.error("Failed to submit review via feedbackApi:", error);
-    isError = true;
+    errorMessage = error.message || "feedback_api_error";
   }
 
-  if (isError) {
-    redirect(`/products/${productId}?error=feedback_api_error`);
+  if (errorMessage) {
+    redirect(`/products/${productId}?error=${encodeURIComponent(errorMessage)}`);
   } else {
     revalidatePath(`/products/${productId}`);
   }

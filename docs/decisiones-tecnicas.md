@@ -59,5 +59,7 @@ Siguiendo los acuerdos de integración, las compras del buyer deben ser expuesta
 - **Decisión:** Al ingresar a `/orders`, la Buyer App solicita las órdenes correspondientes al usuario en el Seller App. Adicionalmente, el servicio realiza una mezcla resiliente combinando y ordenando cronológicamente estas órdenes con los datos locales persistidos en la tabla `OrderShadow`.
 - **Impacto:** Si la Seller App está inactiva o no posee ciertos registros, el usuario no perderá su historial local gracias al respaldo de `OrderShadow`.
 
-
-
+## ADR 016: Requerimientos de Sincronización de Sesión en Aplicaciones Satélite (Control Plane, Seller, Feedback, Shipping)
+Para que la sesión iniciada en la Buyer App (Dominio Principal) sea reconocida correctamente por las demás aplicaciones del ecosistema (Control Plane, Seller App, Feedback App, Shipping App) sin forzar logins repetidos o quedar en un estado de sesión inconsistente:
+- **Decisión:** Todas las aplicaciones secundarias que utilicen la misma instancia de Clerk deben ser configuradas explícitamente como **Satellite Apps** de Clerk. Esto requiere registrar cada uno de sus dominios como satélites en el dashboard principal de Clerk y configurar sus respectivas variables de entorno de satélite.
+- **Impacto:** Permite al middleware y SDK de Clerk de cada aplicación procesar adecuadamente las redirecciones con tickets y mantener una sesión unificada en todos los subdominios y dominios externos del proyecto.

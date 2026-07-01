@@ -30,8 +30,11 @@ export default clerkMiddleware(async (auth, req) => {
     console.log(`[Middleware Check] User: ${userId}`);
     console.log(`- Detected Role Claim in JWT:`, roleClaim);
 
+    const isApiRequest = req.nextUrl.pathname.startsWith('/api/') || req.nextUrl.pathname.startsWith('/_next/');
+
     // Fallback: si no está en el token JWT, consultamos a la API de Clerk directamente
-    if (!roleClaim) {
+    // SOLO para peticiones que no sean API o estáticos para evitar latencias de 1.5s en endpoints rápidos
+    if (!roleClaim && !isApiRequest) {
       try {
         const { clerkClient } = await import("@clerk/nextjs/server");
         const client = clerkClient();
@@ -58,7 +61,6 @@ export default clerkMiddleware(async (auth, req) => {
     const isBuyer = roles.includes("buyer") || roles.length === 0; // Por defecto es buyer si no tiene rol
 
     // 1. Redirecciones basadas en rol (Proxy) - Solo para navegación de páginas, no APIs
-    const isApiRequest = req.nextUrl.pathname.startsWith('/api/') || req.nextUrl.pathname.startsWith('/_next/');
     if (!isApiRequest) {
       if (isSeller) {
         const sellerUrl = process.env.SELLER_APP_URL || process.env.SELLER_API_URL || "https://proyecto-c-seller-ellococasaca.vercel.app";

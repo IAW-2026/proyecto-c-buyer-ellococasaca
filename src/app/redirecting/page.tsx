@@ -4,9 +4,12 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { ShieldCheck, Store, MessageSquare, Truck, ArrowRight, LogOut, Pause, Play, Loader2 } from "lucide-react";
+import { useClerk, useAuth } from "@clerk/nextjs";
 
 function RedirectingContent() {
   const searchParams = useSearchParams();
+  const { buildUrlWithAuth } = useClerk();
+  const { isLoaded } = useAuth();
 
   const role = searchParams.get("role") || "usuario";
   const to = searchParams.get("to") || "/";
@@ -14,11 +17,25 @@ function RedirectingContent() {
   const [countdown, setCountdown] = useState(4);
   const [isPaused, setIsPaused] = useState(false);
 
+  const getRedirectUrl = () => {
+    if (!isLoaded) {
+      return to;
+    }
+    if (to.startsWith("http") && buildUrlWithAuth) {
+      try {
+        return buildUrlWithAuth(to);
+      } catch (err) {
+        console.error("Error building Clerk auth URL:", err);
+      }
+    }
+    return to;
+  };
+
   useEffect(() => {
-    if (isPaused) return;
+    if (!isLoaded || isPaused) return;
 
     if (countdown <= 0) {
-      window.location.replace(to);
+      window.location.replace(getRedirectUrl());
       return;
     }
 
@@ -27,7 +44,7 @@ function RedirectingContent() {
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [countdown, to, isPaused]);
+  }, [countdown, to, isPaused, isLoaded, buildUrlWithAuth]);
 
   // Determine role styling and names
   const isRoleAdmin = role === "admin";
@@ -147,11 +164,21 @@ function RedirectingContent() {
         {/* Action Buttons */}
         <div className="space-y-3">
           <button
-            onClick={() => window.location.replace(to)}
-            className="w-full bg-blue-600 text-white py-4 px-6 rounded-2xl font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 active:scale-[0.98] flex items-center justify-center gap-2"
+            onClick={() => window.location.replace(getRedirectUrl())}
+            disabled={!isLoaded}
+            className="w-full bg-blue-600 text-white py-4 px-6 rounded-2xl font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Ir ahora
-            <ArrowRight className="h-5 w-5" />
+            {isLoaded ? (
+              <>
+                Ir ahora
+                <ArrowRight className="h-5 w-5" />
+              </>
+            ) : (
+              <>
+                Cargando sesión...
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </>
+            )}
           </button>
 
           <Link

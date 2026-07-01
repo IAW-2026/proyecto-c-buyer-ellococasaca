@@ -9,49 +9,69 @@ export type Shipment = {
 };
 
 export class ShippingApiClient {
-  private useMocks: boolean;
   private baseUrl: string;
 
   constructor() {
-    this.useMocks = process.env.USE_MOCKS === "true";
     this.baseUrl = process.env.SHIPPING_API_URL || "http://localhost:3003";
   }
 
   async getShipmentByOrderId(orderId: string): Promise<Shipment | null> {
-    if (this.useMocks) {
-      return this.getMockShipment(orderId);
-    }
-
     try {
-      const response = await fetch(`${this.baseUrl}/api/shipments?limit=50`, { next: { revalidate: 0 } });
-      if (!response.ok) {
-        console.warn(`Shipping API GET /api/shipments returned ${response.status}.`);
+      const headers: Record<string, string> = {};
+      if (process.env.INTER_SERVICE_SECRET) {
+        headers["x-inter-service-secret"] = process.env.INTER_SERVICE_SECRET;
+      }
+
+      const response = await fetch(`${this.baseUrl}/api/shipments/by-order/${orderId}`, { 
+        headers,
+        next: { revalidate: 0 } 
+      });
+      if (response.ok) {
+        const resData = await response.json();
+        if (resData.data) {
+          return resData.data;
+        }
+      } else {
+        console.warn(`Shipping API GET /api/shipments/by-order/${orderId} returned ${response.status}. Trying fallback...`);
+      }
+      
+      // Fallback: search in general list
+      const fallbackResponse = await fetch(`${this.baseUrl}/api/shipments?limit=50`, { 
+        headers,
+        next: { revalidate: 0 } 
+      });
+      if (!fallbackResponse.ok) {
+        console.warn(`Shipping API fallback GET /api/shipments returned ${fallbackResponse.status}.`);
         return null;
       }
       
-      const resData = await response.json();
+      const resData = await fallbackResponse.json();
       const shipments = resData.data || [];
       const found = shipments.find((s: any) => s.orderId === orderId);
       
       if (!found) {
-        console.warn(`Shipping API: Shipment for orderId ${orderId} not found.`);
+        console.warn(`Shipping API: Shipment for orderId ${orderId} not found in fallback.`);
         return null;
       }
       
       return found;
     } catch (e) {
-      console.warn("Failed to connect to Shipping API.", e);
+      console.warn("Failed to connect to Shipping API in getShipmentByOrderId.", e);
       return null;
     }
   }
 
   async getAllShipments(): Promise<Shipment[]> {
-    if (this.useMocks) {
-      return [];
-    }
-
     try {
-      const response = await fetch(`${this.baseUrl}/api/shipments?limit=50`, { next: { revalidate: 0 } });
+      const headers: Record<string, string> = {};
+      if (process.env.INTER_SERVICE_SECRET) {
+        headers["x-inter-service-secret"] = process.env.INTER_SERVICE_SECRET;
+      }
+
+      const response = await fetch(`${this.baseUrl}/api/shipments?limit=50`, { 
+        headers,
+        next: { revalidate: 0 } 
+      });
       if (!response.ok) {
         console.warn(`Shipping API GET /api/shipments returned ${response.status}.`);
         return [];
@@ -65,16 +85,20 @@ export class ShippingApiClient {
   }
 
   async getShipmentById(shipmentId: string): Promise<Shipment | null> {
-    if (this.useMocks) {
-      return this.getMockShipment(shipmentId);
-    }
-
     try {
+      const headers: Record<string, string> = {};
+      if (process.env.INTER_SERVICE_SECRET) {
+        headers["x-inter-service-secret"] = process.env.INTER_SERVICE_SECRET;
+      }
+
       let resolvedId = shipmentId;
       let trackingCode = `TRK-${shipmentId.substring(0, 8).toUpperCase()}`;
       
       try {
-        const listRes = await fetch(`${this.baseUrl}/api/shipments?limit=100`, { next: { revalidate: 0 } });
+        const listRes = await fetch(`${this.baseUrl}/api/shipments?limit=100`, { 
+          headers,
+          next: { revalidate: 0 } 
+        });
         if (listRes.ok) {
           const listData = await listRes.json();
           const shipments = listData.data || [];
@@ -90,7 +114,10 @@ export class ShippingApiClient {
         console.warn("Failed to fetch all shipments list for trackingCode fallback:", listErr);
       }
 
-      const response = await fetch(`${this.baseUrl}/api/shipments/${resolvedId}/tracking`, { next: { revalidate: 0 } });
+      const response = await fetch(`${this.baseUrl}/api/shipments/${resolvedId}/tracking`, { 
+        headers,
+        next: { revalidate: 0 } 
+      });
       if (!response.ok) {
         console.warn(`Shipping API GET /api/shipments/${resolvedId}/tracking returned ${response.status}.`);
         return null;
@@ -112,29 +139,6 @@ export class ShippingApiClient {
       console.warn("Failed to connect to Shipping API in getShipmentById.", e);
       return null;
     }
-  }
-
-  private async getMockShipment(orderId: string): Promise<Shipment> {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    const lastChar = orderId.charAt(orderId.length - 1).toUpperCase();
-    let status: 'PREPARING' | 'SHIPPED' | 'DELIVERED' = 'DELIVERED';
-    
-    if (['0', '1', '2', '3'].includes(lastChar)) status = 'PREPARING';
-    else if (['4', '5', '6', '7'].includes(lastChar)) status = 'SHIPPED';
-
-    return {
-      id: `ship_${orderId}`,
-      orderId,
-      buyerId: "demo_user",
-      sellerId: "user_1",
-      status,
-      trackingCode: `TRK-${orderId.substring(4, 10)}`,
-      addressSnapshot: {
-        street: "Av. Alem 1253",
-        city: "Bahía Blanca",
-        postalCode: "8000"
-      },
-    };
   }
 }
 

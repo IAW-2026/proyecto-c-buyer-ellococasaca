@@ -50,6 +50,10 @@ control-plane-analytics.md
 # Test & Debug Scripts
 test-*.js
 test*.js
+test-*.ts
+test*.ts
 inspect-*.js
 inspect*.js
+src/app/api/test-shipping-endpoint/
+
 

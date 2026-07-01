@@ -1,52 +1,22 @@
 import prisma from "@/lib/prisma";
 import { sellerApi } from "@/lib/api-clients/seller";
 
-const isDbAvailable = !!process.env.DATABASE_URL;
-
 export class OrderService {
   async createOrder(userId: string, totalAmount: number, cartId?: string) {
     const externalOrderId = `ORD-${Math.random().toString(36).substring(7).toUpperCase()}`;
 
-    if (!isDbAvailable) {
-      console.warn("No DATABASE_URL found. Order will not be persisted.");
-      return {
-        id: `mock_${Math.random().toString(36).substring(7)}`,
+    return await prisma.orderShadow.create({
+      data: {
         externalOrderId,
         userId,
         cartId,
         status: "PENDING",
         totalAmount,
-        createdAt: new Date(),
-      };
-    }
-
-    try {
-      return await prisma.orderShadow.create({
-        data: {
-          externalOrderId,
-          userId,
-          cartId,
-          status: "PENDING",
-          totalAmount,
-        },
-      });
-    } catch (e) {
-      console.error("Database error in createOrder, falling back to mock:", e);
-      return {
-        id: `mock_${Math.random().toString(36).substring(7)}`,
-        externalOrderId,
-        userId,
-        cartId,
-        status: "PENDING",
-        totalAmount,
-        createdAt: new Date(),
-      };
-    }
+      },
+    });
   }
 
   async updateOrderStatus(orderId: string, status: string) {
-    if (!isDbAvailable || orderId.startsWith('mock_')) return null;
-
     try {
       return await prisma.orderShadow.update({
         where: { id: orderId },
@@ -60,15 +30,13 @@ export class OrderService {
 
   async getOrdersByUser(userId: string) {
     let localOrders: any[] = [];
-    if (isDbAvailable) {
-      try {
-        localOrders = await prisma.orderShadow.findMany({
-          where: { userId },
-          orderBy: { createdAt: 'desc' },
-        });
-      } catch (dbError) {
-        console.error("Database error in getOrdersByUser, continuing without local orders:", dbError);
-      }
+    try {
+      localOrders = await prisma.orderShadow.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+      });
+    } catch (dbError) {
+      console.error("Database error in getOrdersByUser, continuing without local orders:", dbError);
     }
 
     let finalOrders = localOrders;
@@ -107,12 +75,10 @@ export class OrderService {
               localOrder.status = normalizedStatus;
               
               // Actualizamos en segundo plano la base de datos local
-              if (isDbAvailable && !localOrder.id.startsWith('mock_')) {
-                prisma.orderShadow.update({
-                  where: { id: localOrder.id },
-                  data: { status: normalizedStatus },
-                }).catch(e => console.error("Error background updating order status from seller:", e));
-              }
+              prisma.orderShadow.update({
+                where: { id: localOrder.id },
+                data: { status: normalizedStatus },
+              }).catch(e => console.error("Error background updating order status from seller:", e));
             }
             if (so.trackingId) {
               localOrder.trackingId = so.trackingId;
@@ -171,7 +137,7 @@ export class OrderService {
           order.status = 'PAID';
 
           // Actualizar base de datos local en segundo plano para persistirlo
-          if (isDbAvailable && typeof order.id === 'string' && !order.id.startsWith('mock_') && !order.id.startsWith('seller_')) {
+          if (typeof order.id === 'string' && !order.id.startsWith('seller_')) {
             prisma.orderShadow.update({
               where: { id: order.id },
               data: { status: 'PAID' },
@@ -189,24 +155,22 @@ export class OrderService {
   async getOrderById(orderId: string) {
     let order: any = null;
 
-    if (isDbAvailable && !orderId.startsWith('mock_')) {
-      try {
-        order = await prisma.orderShadow.findUnique({
-          where: { id: orderId },
-        });
-      } catch (e) {
-        console.error("Database error in getOrderById:", e);
-      }
+    try {
+      order = await prisma.orderShadow.findUnique({
+        where: { id: orderId },
+      });
+    } catch (e) {
+      console.error("Database error in getOrderById:", e);
     }
 
     if (!order) {
-      // Si es un mock o no está en la base local, intentamos buscarlo en las órdenes del Seller
+      // Si no está en la base local, intentamos buscarlo en las órdenes del Seller
       try {
         const { auth } = await import("@clerk/nextjs/server");
         const { userId } = auth();
         if (userId) {
           const sellerOrders = await sellerApi.getOrdersByBuyer(userId);
-          const match = sellerOrders.find((so: any) => (so.id === orderId || so.externalOrderId === orderId || so.orderId === orderId || `mock_${so.id}` === orderId));
+          const match = sellerOrders.find((so: any) => (so.id === orderId || so.externalOrderId === orderId || so.orderId === orderId));
           if (match) {
             let normalizedStatus = 'PAID';
             if (match.status) {
@@ -259,12 +223,10 @@ export class OrderService {
           order.status = normalizedStatus;
           
           // Actualizamos en segundo plano la base de datos local
-          if (isDbAvailable && !orderId.startsWith('mock_')) {
-            prisma.orderShadow.update({
-              where: { id: orderId },
-              data: { status: normalizedStatus },
-            }).catch(e => console.error("Error background updating shadow order status:", e));
-          }
+          prisma.orderShadow.update({
+            where: { id: orderId },
+            data: { status: normalizedStatus },
+          }).catch(e => console.error("Error background updating shadow order status:", e));
         }
         if (match.trackingId) {
           order.trackingId = match.trackingId;
@@ -307,12 +269,10 @@ export class OrderService {
 
       if ((shipment || hasApprovedCharge) && order.status !== 'PAID' && order.status !== 'REJECTED') {
         order.status = 'PAID';
-        if (isDbAvailable && !orderId.startsWith('mock_')) {
-          prisma.orderShadow.update({
-            where: { id: orderId },
-            data: { status: 'PAID' },
-          }).catch(e => console.error("Error background updating shadow order status to PAID from shipping:", e));
-        }
+        prisma.orderShadow.update({
+          where: { id: orderId },
+          data: { status: 'PAID' },
+        }).catch(e => console.error("Error background updating shadow order status to PAID from shipping:", e));
       }
     } catch (e) {
       console.warn("Failed to sync order status with Shipping/Payments in getOrderById:", e);
