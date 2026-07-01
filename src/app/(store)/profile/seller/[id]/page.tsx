@@ -67,7 +67,9 @@ export default async function SellerProfilePage({ params }: SellerProfilePagePro
                 <div className="text-center px-6 border-r border-gray-200">
                   <div className="flex items-center gap-2 mb-1">
                     <Star className="w-6 h-6 text-yellow-400 fill-current" />
-                    <span className="text-3xl font-black text-gray-900">{rating.averageRating}</span>
+                    <span className="text-3xl font-black text-gray-900">
+                      {rating.averageRating.toFixed(1)}
+                    </span>
                   </div>
                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                     Reputación

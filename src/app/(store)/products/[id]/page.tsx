@@ -99,7 +99,9 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
                   <div className="flex flex-col items-end">
                     <div className="flex items-center gap-1 bg-yellow-400 px-3 py-1 rounded-full shadow-lg shadow-yellow-200">
                       <Star className="w-4 h-4 text-white fill-current" />
-                      <span className="text-sm font-black text-white">{rating.averageRating}</span>
+                      <span className="text-sm font-black text-white">
+                        {rating.averageRating.toFixed(1)}
+                      </span>
                     </div>
                     <span className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest">
                       {rating.totalReviews} reseñas
