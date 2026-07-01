@@ -82,4 +82,3 @@ Se realizaron mejoras clave para completar la integración real con el ecosistem
 
 ### 🧹 Limpieza de Mocks e Infraestructura de Pruebas
 - Se eliminaron mocks locales obsoletos y archivos temporales de testing.
-- Se configuró el archivo `.gitignore` para omitir carpetas de endpoints experimentales (`src/app/api/test-shipping-endpoint/`) y scripts locales de prueba (`test*.ts` / `test-*.ts`) para mantener el repositorio limpio y seguro.
