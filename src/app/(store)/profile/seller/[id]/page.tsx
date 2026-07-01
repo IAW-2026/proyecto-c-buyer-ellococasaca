@@ -62,27 +62,25 @@ export default async function SellerProfilePage({ params }: SellerProfilePagePro
               </div>
             </div>
 
-            {rating && (
-              <div className="flex items-center gap-6 bg-gray-50 p-6 rounded-[32px] border border-gray-100">
-                <div className="text-center px-6 border-r border-gray-200">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Star className="w-6 h-6 text-yellow-400 fill-current" />
-                    <span className="text-3xl font-black text-gray-900">
-                      {rating.averageRating.toFixed(1)}
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                    Reputación
+            <div className="flex items-center gap-6 bg-gray-50 p-6 rounded-[32px] border border-gray-100">
+              <div className="text-center px-6 border-r border-gray-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <Star className="w-6 h-6 text-yellow-400 fill-current" />
+                  <span className="text-3xl font-black text-gray-900">
+                    {(rating?.averageRating || 0).toFixed(1)}
                   </span>
                 </div>
-                <div className="text-center">
-                  <span className="text-3xl font-black text-gray-900">{rating.totalReviews}</span>
-                  <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">
-                    Ventas totales
-                  </div>
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                  Reputación
+                </span>
+              </div>
+              <div className="text-center">
+                <span className="text-3xl font-black text-gray-900">{rating?.totalReviews || 0}</span>
+                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">
+                  Ventas totales
                 </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
 
