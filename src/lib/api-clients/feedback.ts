@@ -28,6 +28,18 @@ export class FeedbackApiClient {
   async getProductReviews(productId: string): Promise<Review[]> {
     try {
       const headers: Record<string, string> = {};
+      
+      let token = null;
+      try {
+        token = await auth().getToken();
+      } catch (e) {
+        console.warn("Failed to get Clerk token inside getProductReviews:", e);
+      }
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       if (process.env.INTER_SERVICE_SECRET) {
         headers["x-inter-service-secret"] = process.env.INTER_SERVICE_SECRET;
       }
@@ -61,6 +73,18 @@ export class FeedbackApiClient {
   async getProductRating(productId: string): Promise<RatingsCache | null> {
     try {
       const headers: Record<string, string> = {};
+      
+      let token = null;
+      try {
+        token = await auth().getToken();
+      } catch (e) {
+        console.warn("Failed to get Clerk token inside getProductRating:", e);
+      }
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       if (process.env.INTER_SERVICE_SECRET) {
         headers["x-inter-service-secret"] = process.env.INTER_SERVICE_SECRET;
       }
@@ -86,6 +110,18 @@ export class FeedbackApiClient {
   async getSellerReviews(sellerId: string): Promise<Review[]> {
     try {
       const headers: Record<string, string> = {};
+      
+      let token = null;
+      try {
+        token = await auth().getToken();
+      } catch (e) {
+        console.warn("Failed to get Clerk token inside getSellerReviews:", e);
+      }
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       if (process.env.INTER_SERVICE_SECRET) {
         headers["x-inter-service-secret"] = process.env.INTER_SERVICE_SECRET;
       }
@@ -119,6 +155,18 @@ export class FeedbackApiClient {
   async getSellerRating(sellerId: string): Promise<RatingsCache | null> {
     try {
       const headers: Record<string, string> = {};
+      
+      let token = null;
+      try {
+        token = await auth().getToken();
+      } catch (e) {
+        console.warn("Failed to get Clerk token inside getSellerRating:", e);
+      }
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       if (process.env.INTER_SERVICE_SECRET) {
         headers["x-inter-service-secret"] = process.env.INTER_SERVICE_SECRET;
       }
