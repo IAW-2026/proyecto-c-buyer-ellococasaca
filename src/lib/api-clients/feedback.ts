@@ -10,6 +10,7 @@ export type Review = {
   ratingSeller: number;
   comment: string;
   createdAt: string;
+  isModerated?: boolean;
 };
 
 export type RatingsCache = {
@@ -53,7 +54,7 @@ export class FeedbackApiClient {
       const data = await response.json();
       const reviewsList = Array.isArray(data) ? data : (data.reviews || []);
       
-      return reviewsList.map((r: any) => ({
+      const mappedReviews = reviewsList.map((r: any) => ({
         id: r.reviewId || r.id || '',
         orderId: r.orderId || '',
         buyerId: r.buyerId || '',
@@ -63,7 +64,10 @@ export class FeedbackApiClient {
         ratingSeller: typeof r.sellerRating === 'number' ? r.sellerRating : (typeof r.ratingSeller === 'number' ? r.ratingSeller : 5),
         comment: r.comment || '',
         createdAt: r.createdAt || new Date().toISOString(),
+        isModerated: r.isModerated ?? r.is_moderated ?? r.moderated ?? false,
       }));
+
+      return mappedReviews.filter((r: any) => !r.isModerated);
     } catch (e) {
       console.warn(`Failed to fetch product reviews for ${productId}:`, e);
       return [];
@@ -135,7 +139,7 @@ export class FeedbackApiClient {
       const data = await response.json();
       const reviewsList = Array.isArray(data) ? data : (data.reviews || []);
       
-      return reviewsList.map((r: any) => ({
+      const mappedReviews = reviewsList.map((r: any) => ({
         id: r.reviewId || r.id || '',
         orderId: r.orderId || '',
         buyerId: r.buyerId || '',
@@ -145,7 +149,10 @@ export class FeedbackApiClient {
         ratingSeller: typeof r.sellerRating === 'number' ? r.sellerRating : (typeof r.ratingSeller === 'number' ? r.ratingSeller : 5),
         comment: r.comment || '',
         createdAt: r.createdAt || new Date().toISOString(),
+        isModerated: r.isModerated ?? r.is_moderated ?? r.moderated ?? false,
       }));
+
+      return mappedReviews.filter((r: any) => !r.isModerated);
     } catch (e) {
       console.warn(`Failed to fetch seller reviews for ${sellerId}:`, e);
       return [];

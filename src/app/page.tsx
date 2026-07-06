@@ -2,8 +2,35 @@ import { sellerApi } from "@/lib/api-clients/seller";
 import { ProductCard } from "@/components/products/ProductCard";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { redirect } from "next/navigation";
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined };
+}) {
+  const status = typeof searchParams.status === "string" ? searchParams.status : undefined;
+  const collectionStatus = typeof searchParams.collection_status === "string" ? searchParams.collection_status : undefined;
+  const externalReference = typeof searchParams.external_reference === "string" ? searchParams.external_reference : undefined;
+  const paymentId = typeof searchParams.payment_id === "string" ? searchParams.payment_id : undefined;
+
+  // Interceptar redirección de pago exitoso de Mercado Pago
+  if (status === "approved" || collectionStatus === "approved") {
+    const query = new URLSearchParams();
+    if (externalReference) {
+      query.set("orderId", externalReference);
+    }
+    if (paymentId) {
+      query.set("payment_id", paymentId);
+    }
+    redirect(`/orders/success?${query.toString()}`);
+  }
+
+  // Interceptar redirección de pago rechazado
+  if (status === "rejected" || collectionStatus === "rejected") {
+    redirect(`/cart?error=payment_rejected&orderId=${externalReference || "unknown"}`);
+  }
+
   const products = await sellerApi.getProducts();
 
   return (

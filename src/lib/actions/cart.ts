@@ -7,6 +7,7 @@ import { paymentsApi, ChargeResponse } from "@/lib/api-clients/payments";
 import { revalidatePath } from "next/cache";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect";
 
 export async function addToCartAction(productId: string, size?: string) {
   let userId;
@@ -25,6 +26,17 @@ export async function addToCartAction(productId: string, size?: string) {
   if (!product) throw new Error("Producto no encontrado");
   if (product.stock <= 0) throw new Error("Producto sin stock");
 
+  // Check current quantity of this item in the cart to prevent exceeding stock
+  const cart = await cartService.getOrCreateCart(userId);
+  const existingItem = cart.items.find(
+    (item) => item.productId === productId && item.size === (size || null)
+  );
+
+  const currentQty = existingItem ? existingItem.quantity : 0;
+  if (currentQty + 1 > product.stock) {
+    throw new Error(`Solo quedan ${product.stock} unidades disponibles de este producto.`);
+  }
+
   await cartService.addItem(userId, product, 1, size);
   
   revalidatePath("/", "layout"); // Revalidar layout para actualizar contador
@@ -39,21 +51,28 @@ export async function removeFromCartAction(itemId: string) {
 }
 
 export async function updateCartItemQuantityAction(itemId: string, productId: string, newQuantity: number) {
-  if (newQuantity <= 0) {
-    await cartService.removeItem(itemId);
-  } else {
-    const product = await sellerApi.getProductById(productId);
-    if (!product) throw new Error("Producto no encontrado");
-    
-    if (newQuantity > product.stock) {
-      throw new Error(`Solo quedan ${product.stock} unidades disponibles`);
-    }
+  try {
+    if (newQuantity <= 0) {
+      await cartService.removeItem(itemId);
+    } else {
+      const product = await sellerApi.getProductById(productId);
+      if (!product) throw new Error("Producto no encontrado");
+      
+      if (newQuantity > product.stock) {
+        throw new Error(`Solo quedan ${product.stock} unidades disponibles de este producto.`);
+      }
 
-    await cartService.updateQuantity(itemId, newQuantity);
+      await cartService.updateQuantity(itemId, newQuantity);
+    }
+    
+    revalidatePath("/", "layout");
+    revalidatePath("/cart");
+  } catch (error: any) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
+    redirect(`/cart?error=stock_error&message=${encodeURIComponent(error.message || "Error de stock")}`);
   }
-  
-  revalidatePath("/", "layout");
-  revalidatePath("/cart");
 }
 
 function parseShippingAddress(addressStr: string) {
@@ -150,10 +169,11 @@ export async function checkoutAction(formData: FormData) {
     }
   }
 
-  // 3. Actualizar estados de órdenes según resultados de cobros
+  // 3. Sincronizar / actualizar estados de órdenes según resultados de cobros
   let atLeastOneApproved = false;
   let firstRedirectUrl: string | undefined = undefined;
   let firstRejectedOrderId: string | undefined = undefined;
+  let firstApprovedOrderId: string | undefined = undefined;
 
   for (const res of results) {
     const redirectUrl = res.charge.redirectUrl || res.charge.url;
@@ -161,6 +181,9 @@ export async function checkoutAction(formData: FormData) {
     if (res.charge.status === 'APPROVED') {
       atLeastOneApproved = true;
       await orderService.updateOrderStatus(res.order.id, 'PAID');
+      if (!firstApprovedOrderId) {
+        firstApprovedOrderId = res.order.externalOrderId;
+      }
     } else if (redirectUrl) {
       // El cobro requiere redirección al gateway de pago (estado PENDING inicial se mantiene)
       if (!firstRedirectUrl) {
@@ -188,7 +211,7 @@ export async function checkoutAction(formData: FormData) {
   revalidatePath("/orders");
 
   if (atLeastOneApproved) {
-    redirect("/orders");
+    redirect(`/orders/success?orderId=${firstApprovedOrderId || 'unknown'}`);
   } else {
     redirect(`/cart?error=payment_rejected&orderId=${firstRejectedOrderId || 'unknown'}`);
   }

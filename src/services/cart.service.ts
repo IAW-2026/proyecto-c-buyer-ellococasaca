@@ -42,6 +42,19 @@ export class CartService {
   async addItem(userId: string, product: Product, quantity: number = 1, size?: string) {
     const cart = await this.getOrCreateCart(userId);
 
+    const existingItem = cart.items.find(
+      (item) => item.productId === product.id && item.size === (size || null)
+    );
+
+    if (existingItem) {
+      return await prisma.cartItem.update({
+        where: { id: existingItem.id },
+        data: {
+          quantity: existingItem.quantity + quantity,
+        },
+      });
+    }
+
     // Snapshotting: Guardamos el precio current del producto en el item del carrito
     return await prisma.cartItem.create({
       data: {

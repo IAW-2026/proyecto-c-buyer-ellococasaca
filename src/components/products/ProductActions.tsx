@@ -30,9 +30,9 @@ export const ProductActions = ({ productId, sizes, stock }: ProductActionsProps)
       window.dispatchEvent(new Event("cart-updated"));
       setIsSuccess(true);
       setTimeout(() => setIsSuccess(false), 2000);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error adding to cart:", err);
-      setError("Hubo un error al agregar al carrito");
+      setError(err?.message || "Hubo un error al agregar al carrito");
     } finally {
       setIsPending(false);
     }

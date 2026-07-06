@@ -1,16 +1,17 @@
 import { cartService } from "@/services/cart.service";
 import Link from "next/link";
-import { Trash2, ShoppingBag, ArrowRight, Plus, Minus } from "lucide-react";
+import { Trash2, ShoppingBag, ArrowRight, Plus, Minus, AlertCircle } from "lucide-react";
 import { removeFromCartAction, updateCartItemQuantityAction } from "@/lib/actions/cart";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { CartRefreshTrigger } from "@/components/cart/CartRefreshTrigger";
 import { LoadingLink } from "@/components/ui/LoadingLink";
+import { CartQtyButton, CartRemoveButton } from "@/components/cart/CartQtyButton";
 
 export default async function CartPage({
   searchParams,
 }: {
-  searchParams: { error?: string; orderId?: string };
+  searchParams: { error?: string; orderId?: string; message?: string };
 }) {
   const { userId } = auth();
   
@@ -35,6 +36,20 @@ export default async function CartPage({
               <h3 className="text-lg font-black uppercase italic tracking-tighter text-red-900">Pago Rechazado</h3>
               <p className="text-sm text-red-600 font-medium italic">
                 Hubo un problema al procesar tu pago para la orden <span className="font-mono font-bold">{searchParams.orderId}</span>. Por favor, intentá con otro método.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {searchParams.error === 'stock_error' && (
+          <div className="mb-8 bg-amber-50 border-2 border-amber-100 p-6 rounded-[32px] flex items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className="bg-amber-500 p-2 rounded-xl">
+              <AlertCircle className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-black uppercase italic tracking-tighter text-amber-900">Límite de Stock</h3>
+              <p className="text-sm text-amber-700 font-medium italic">
+                {searchParams.message || "No podés agregar más unidades de este producto."}
               </p>
             </div>
           </div>
@@ -88,17 +103,17 @@ export default async function CartPage({
                             
                             <div className="mt-4 flex items-center gap-3">
                               <form action={decreaseAction}>
-                                <button className="p-1 rounded-md border border-gray-200 hover:bg-100 transition-colors">
+                                <CartQtyButton>
                                   <Minus className="h-4 w-4 text-gray-600" />
-                                </button>
+                                </CartQtyButton>
                               </form>
                               
                               <span className="text-sm font-bold w-4 text-center">{item.quantity}</span>
                               
                               <form action={increaseAction}>
-                                <button className="p-1 rounded-md border border-gray-200 hover:bg-100 transition-colors">
+                                <CartQtyButton>
                                   <Plus className="h-4 w-4 text-gray-600" />
-                                </button>
+                                </CartQtyButton>
                               </form>
                             </div>
 
@@ -113,13 +128,9 @@ export default async function CartPage({
                           <div className="mt-4 sm:mt-0 sm:pr-9">
                             <div className="absolute top-0 right-0">
                               <form action={removeAction}>
-                                <button
-                                  type="submit"
-                                  className="-m-2 inline-flex p-2 text-gray-400 hover:text-red-500 transition-colors"
-                                >
-                                  <span className="sr-only">Eliminar</span>
+                                <CartRemoveButton>
                                   <Trash2 className="h-5 w-5" />
-                                </button>
+                                </CartRemoveButton>
                               </form>
                             </div>
                           </div>
