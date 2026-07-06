@@ -6,6 +6,8 @@ import { Shirt } from "lucide-react";
 import { ClerkProvider, SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import CartCount from "@/components/layout/CartCount";
 import { LoadingLink } from "@/components/ui/LoadingLink";
+import MobileMenu from "@/components/layout/MobileMenu";
+
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -66,34 +68,36 @@ export default function RootLayout({
                     </SignedIn>
                   </nav>
                   
-                  <div className="flex items-center gap-4 border-l pl-6 border-gray-100">
+                  <div className="flex items-center gap-3 md:gap-4 border-l pl-4 md:pl-6 border-gray-100">
                     <CartCount />
 
                     <SignedOut>
                       <SignInButton mode="modal">
-                        <button className="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-bold uppercase tracking-widest hover:bg-blue-700 transition-all">
+                        <button className="bg-blue-600 text-white px-4 md:px-6 py-2 rounded-xl text-xs md:text-sm font-bold uppercase tracking-widest hover:bg-blue-700 transition-all">
                           Ingresar
                         </button>
                       </SignInButton>
                     </SignedOut>
                     <SignedIn>
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-3 md:gap-4">
                         <UserButton 
                           afterSignOutUrl="/"
                           appearance={{
                             elements: {
-                              avatarBox: "h-10 w-10 rounded-xl"
+                              avatarBox: "h-9 w-9 md:h-10 md:w-10 rounded-xl"
                             }
                           }}
                         />
                         <Link 
                           href="/logout" 
-                          className="text-[10px] font-black uppercase tracking-widest text-red-500 hover:text-red-600 transition-colors border-l pl-4 border-gray-100"
+                          className="hidden md:inline-block text-[10px] font-black uppercase tracking-widest text-red-500 hover:text-red-600 transition-colors border-l pl-4 border-gray-100"
                         >
                           Salir
                         </Link>
                       </div>
                     </SignedIn>
+
+                    <MobileMenu />
                   </div>
                 </div>
               </div>
